@@ -14,4 +14,4 @@ src/error-notifier/
 *.pth
 *.h5
 *.txt
-*.png
+#*.png
