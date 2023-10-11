@@ -6,6 +6,8 @@
 # Node modules
 node_modules/
 logs/
+src/__pycach__/
+src/error-notifier/
 
 # files
 *.fifo
