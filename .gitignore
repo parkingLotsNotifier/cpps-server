@@ -1,0 +1,15 @@
+# .gitignore
+
+# Environment variables
+.env
+
+# Node modules
+node_modules/
+logs/
+
+# files
+*.fifo
+*.pth
+*.h5
+*.txt
+
