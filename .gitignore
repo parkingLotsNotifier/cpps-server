@@ -5,13 +5,14 @@
 
 # Node modules
 node_modules/
-logs/
 src/__pycach__/
 src/error-notifier/
+logs/*.json
 
 # files
 *.fifo
 *.pth
 *.h5
 *.txt
+*.log
 *.png
