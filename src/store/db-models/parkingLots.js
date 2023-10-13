@@ -32,7 +32,7 @@ const ParkingLotsSchema = new Schema({
     file_name: String,
     slots: [SlotSchema],
     parking_name: String 
-});
+},{timestamps : true});
 
 // Create the model
 const ParkingLots = mongoose.model('ParkingLots', ParkingLotsSchema);
