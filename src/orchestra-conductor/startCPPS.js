@@ -1,7 +1,6 @@
 const { spawn } = require('child_process');
 const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
-const {parsePredictions} = require('../parser/parser')
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
 const {dataPreperation} = require('../data-preperation/dataPreperation')
