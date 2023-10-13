@@ -4,7 +4,7 @@ const { capturePhoto } = require('../capture/captureWapper');
 const {parsePredictions} = require('../parser/parser')
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-
+const {dataPreperation} = require('../data-preperation/dataPreperation')
 
 const logger = createLogger('startCPPS');
 
@@ -64,18 +64,22 @@ const startCPPS = async () => {
     logger.info(`photo name ${pictureName} has been cropped `)
     
     //prediction - child process
-    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'], {
+    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', JSON.stringify(croppedMessage)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-    });
-    const isPredict = croppedMessage.file_name != undefined ? true:false;
+    });    
+    const isPredict = pytorchMessage.slots[0].prediction != undefined ? true:false;
     if(!isPredict){
       throw new Error(pytorchMessage.error)
     }
     logger.info(`photo name ${pictureName} has been predicted`);
-    const parsedPredictions = await parsePredictions(pytorchMessage);
+    
+   //prepair data for store
+   const prepairedData = await dataPreperation(pytorchMessage);
       
-    //store
-    const isStored = await storeParkingLotsData(parsedPredictions);
+
+    
+   //store
+    const isStored = await storeParkingLotsData(prepairedData);
     if(isStored){
       logger.info(`predictions has been saved to db`)
     }

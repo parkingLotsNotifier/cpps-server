@@ -1,14 +1,15 @@
-const Jimp = require('jimp');
-const { rejections } = require('winston');
+const { exec } = require('child_process');
 
-async function rotateImage(filePath) {
-    try {
-        const image = await Jimp.read(filePath);
-        await image.rotate(90).writeAsync(filePath);
-        return true ;
-    } catch (error) {
-        reject(new Error(error)) ;
-    }
+function rotateImage(filePath) {
+    return new Promise((resolve, reject) => {
+        exec(`convert ${filePath} -rotate 90 ${filePath}`, (error) => {
+            if (error) {
+                reject(new Error(error));
+            } else {
+                resolve(true);
+            }
+        });
+    });
 }
 
 module.exports = {

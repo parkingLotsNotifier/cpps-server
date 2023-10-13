@@ -10,9 +10,9 @@ const env = {
             FAREWELL:'goodbay',
             TELEGRAM_TOKEN : process.env.TELEGRAM_TOKEN,
             GMAIL_PASS : process.env.GMAIL_PASS,
-            GMAIL_USERNAME : process.env.GMAIL_USERNAME
-            MAIL_DEST : process.env.MAIL_DEST
-            MAIL_SOURCE : process.env.MAIL_SOURCE
+            GMAIL_USERNAME : process.env.GMAIL_USERNAME,
+            MAIL_DEST : process.env.MAIL_DEST,
+            MAIL_SOURCE : process.env.MAIL_SOURCE,
             CHAT_ID : process.env.CHAT_ID
             };
 module.exports=env;

@@ -1,20 +1,40 @@
-const mongoose = require(`mongoose`);
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const ParkingLotSchema = new mongoose.Schema({parkingName: {type : String ,default : 'unavalable'},
-lots :[{
-    name: {
-      type: String,
-      required: true
-    },
-    status: {
-      type: String,
-      default: 'unavailable'
+// Define the Coordinate schema
+const CoordinateSchema = new Schema({
+    x1: Number,
+    y1: Number,
+    w: Number,
+    h: Number,
+    center: {
+        x: Number,
+        y: Number
     }
-  }]}, {timestamps : true});
-  
-  const ParkingLots = mongoose.model('ParkingLots', ParkingLotSchema);
-  
-  module.exports = ParkingLots;
+});
 
+// Define the Prediction schema
+const PredictionSchema = new Schema({
+    class: String,
+    confidence: Number
+});
 
+// Define the Slot schema
+const SlotSchema = new Schema({
+    filename: String,
+    coordinate: CoordinateSchema,
+    prediction: PredictionSchema,
+    lot_name: String 
+});
 
+// Define the main schema
+const ParkingLotsSchema = new Schema({
+    file_name: String,
+    slots: [SlotSchema],
+    parking_name: String 
+});
+
+// Create the model
+const ParkingLots = mongoose.model('ParkingLots', ParkingLotsSchema);
+
+module.exports = ParkingLots;

@@ -14,6 +14,7 @@ const capturePhoto = () => {
         reject(error);
         return;
       }
+    
 
       const device_model = stdout.trim();
       const file_name = `picture-${device_model}-${new Date().toLocaleString('he-IL',{ hour12: false }).replace(/, /g, '-')}`;
