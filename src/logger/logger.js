@@ -2,6 +2,7 @@ const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const Telegram = require('winston-telegram');
 const { Mail } = require('winston-mail');
+const SlackHook = require("winston-slack-webhook-transport");
 
 const COOLDOWN_PERIOD = 10 * 60 * 1000; // 10 minutes in milliseconds
 const lastUrgentLogTimestamps = {};
@@ -43,6 +44,16 @@ function createLogger(filename) {
         maxFiles: '14d'
     });
 
+    const slackErrorTransport = new SlackHook({
+        level:'error',
+        webhookUrl:'https://hooks.slack.com/services/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'
+    })
+
+    const slackInfoTransport = new SlackHook({
+        level:'info',
+        webhookUrl:'https://hooks.slack.com/services/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'
+    })
+
     const fifoTransport = new winston.transports.File({
         filename: `${logDir}/${filename}.fifo`,
         level: 'error'
@@ -56,8 +67,22 @@ function createLogger(filename) {
         
     });
 
-    const gmailTransport = new Mail({
-        to: process.env.MAIL_DEST,
+    const gmailDest1Transport = new Mail({
+        to: process.env.MAIL_DEST1,
+        from: process.env.MAIL_SOURCE,
+        subject: 'Error Notification',
+        level: 'error',
+        host: 'smtp.gmail.com',
+        username: process.env.GMAIL_USERNAME,
+        password: process.env.GMAIL_PASS,
+        port: '587',
+        tls: true,
+        authentication: 'LOGIN',
+        format: applyCooldown(filename + '-gmail')
+    });
+
+    const gmailDest2Transport = new Mail({
+        to: process.env.MAIL_DEST2,
         from: process.env.MAIL_SOURCE,
         subject: 'Error Notification',
         level: 'error',
@@ -77,7 +102,7 @@ function createLogger(filename) {
                 return `${timestamp} [${level}]: ${message}`;
             })
         ),
-        transports: [fileTransport, fifoTransport, telegramTransport, gmailTransport]
+        transports: [fileTransport,slackInfoTransport,telegramTransport, gmailDest1Transport,gmailDest2Transport,slackErrorTransport,fifoTransport]
     });
 
     return logger;
