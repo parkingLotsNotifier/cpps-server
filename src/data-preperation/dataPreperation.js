@@ -38,7 +38,7 @@ const dataPreperation = (data) => {
             slot.coordinate.center = center;
     
             // Determine if the center is above or below the diagonal
-            if (center.y > m * center.x + c) {
+            if (center.y < m * center.x + c) {
                 slot.lot_name = 'B' + countB++;
             } else {
                 slot.lot_name = 'A' + countA++;

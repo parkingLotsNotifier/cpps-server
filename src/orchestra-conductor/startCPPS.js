@@ -80,13 +80,13 @@ const startCPPS = async () => {
    //store
     const isStored = await storeParkingLotsData(prepairedData);
     if(isStored){
-      logger.info(`predictions has been saved to db`)
+      logger.info(`predictions has been saved to DB`)
     }
       
-     
+    const homeDir = require('os').homedir();
     //remove photos
-     spawn('rm', ['/data/data/com.termux/files/home/photos/*.jpg', '/data/data/com.termux/files/home/photos/cropped/*.jpg'],{ shell: true });
-
+    spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
+    logger.info(`deleting photos from server`)
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
   }

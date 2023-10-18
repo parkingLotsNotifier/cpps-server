@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+mongoose.set('strictQuery', false);
 const Schema = mongoose.Schema;
 
 // Define the Coordinate schema
