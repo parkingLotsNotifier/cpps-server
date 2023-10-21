@@ -29,11 +29,11 @@ model.eval()
 
 class_names = open("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/labels.txt", "r").readlines()
 
-def predict_occupancy(img_path):
+def predict_occupancy(image_path):
 
     try:
         # Load image
-        image = Image.open(img_path).convert('RGB')
+        image = Image.open(image_path).convert('RGB')
 
         # Transform image 
         input_tensor = data_transforms(image)
