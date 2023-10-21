@@ -1,34 +1,54 @@
 import sys
 import json
 import os
-import numpy as np
+from PIL import Image  
 import torch
+from torchvision import transforms
 import torch.nn.functional as F
-import cv2
+
 sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
 from logger.logger import setup_logger
 
 logger = setup_logger("pytorch_model") 
 
-SOURCE_DIRECTORY = "/data/data/com.termux/files/home/photos/cropped"
+# Define transforms
+data_transforms = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  
+])
+
+# Set the device to CPU
+device = torch.device("cpu")
+
+#Load model
 model = torch.load("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/my_NETMODELV3_IMAGENET1K_V1_balanced.pth",map_location=torch.device('cpu'))
+# Move model to CPU
+model = model.to(device)  
 model.eval()
 
 class_names = open("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/labels.txt", "r").readlines()
 
-def predict_occupancy(image_path):
+def predict_occupancy(img_path):
+
     try:
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        size = (224, 224)
-        image = cv2.resize(image, size)
+        # Load image
+        image = Image.open(img_path).convert('RGB')
 
-        normalized_image_array = (image.astype(np.float32) / 127.5) - 1
-        data = np.transpose(normalized_image_array, (2, 0, 1))
-        data = np.expand_dims(data, 0)
-        data = torch.tensor(data)
+        # Transform image 
+        input_tensor = data_transforms(image)
 
-        prediction = model(data)
+        # Add batch dim
+        input_tensor = input_tensor.unsqueeze(0)
+
+        # Move to device
+        input_tensor = input_tensor.to(device)
+
+        # Forward pass 
+        output = model(input_tensor)
+
+        # Get prediction
+        _, prediction = torch.max(output, 1)
         probabilities = F.softmax(prediction, dim=1)
         index = torch.argmax(probabilities).item()
         confidence_score = torch.max(probabilities, dim=1).values.item()
