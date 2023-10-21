@@ -11,7 +11,7 @@ from logger.logger import setup_logger
 logger = setup_logger("pytorch_model") 
 
 SOURCE_DIRECTORY = "/data/data/com.termux/files/home/photos/cropped"
-model = torch.load("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/my_mobilenet_v3_large.pth",map_location=torch.device('cpu'))
+model = torch.load("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/my_NETMODELV3_IMAGENET1K_V1_balanced.pth",map_location=torch.device('cpu'))
 model.eval()
 
 class_names = open("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/labels.txt", "r").readlines()

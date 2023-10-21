@@ -25,6 +25,7 @@
     "winston": "^3.3.3",
     "winston-daily-rotate-file": "^4.7.1",
     "winston-mail": "^2.0.0",
+    "winston-slack-webhook-transport": "^2.3.2",
     "winston-telegram": "^2.6.0",
     "ws": "^8.14.2"
   }

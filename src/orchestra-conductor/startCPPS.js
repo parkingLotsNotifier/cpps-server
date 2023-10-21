@@ -85,8 +85,8 @@ const startCPPS = async () => {
       
     const homeDir = require('os').homedir();
     //remove photos
-    spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
-    logger.info(`deleting photos from server`)
+    //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
+    //logger.info(`deleting photos from server`)
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
   }
