@@ -48,10 +48,18 @@ def predict_occupancy(image_path):
         output = model(input_tensor)
 
         # Get prediction
-        _, prediction = torch.max(output, 1)
-        probabilities = F.softmax(prediction, dim=1)
-        index = torch.argmax(probabilities).item()
+        # Apply softmax to get probabilities
+        probabilities = F.softmax(output, dim=1)
+
+        # Find the class with the maximum probability
+        _, prediction = torch.max(probabilities, 1)
+
+        # Get the maximum probability (confidence score)
         confidence_score = torch.max(probabilities, dim=1).values.item()
+
+        # Get the class index and class name
+        index = prediction.item()
+
 
         class_name = class_names[index].strip()[2:]
         return class_name, confidence_score
