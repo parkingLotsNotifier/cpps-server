@@ -15,35 +15,9 @@ const dataPreperation = (data) => {
             y_coords.push(center.y);
         });
     
-        let centroid1 = {
-            x: Math.min(...x_coords),
-            y: y_coords[x_coords.indexOf(Math.min(...x_coords))]
-        };
-    
-        let centroid2 = {
-            x: Math.max(...x_coords),
-            y: y_coords[x_coords.indexOf(Math.max(...x_coords))]
-        };
-    
-        // Calculate slope and y-intercept of the diagonal
-        let m = (centroid2.y - centroid1.y) / (centroid2.x - centroid1.x);
-        let c = centroid1.y - m * centroid1.x;
-    
-        // Process each slot
-        let countA = 1;
-        let countB = 1;
+        
+        
         data.slots.forEach(slot => {
-            // Calculate and add the center coordinates
-            let center = calculateCenter(slot.coordinate);
-            slot.coordinate.center = center;
-    
-            // Determine if the center is above or below the diagonal
-            if (center.y < m * center.x + c) {
-                slot.lot_name = 'B' + countB++;
-            } else {
-                slot.lot_name = 'A' + countA++;
-            }
-            
             //shorten the filename property hence it ia a full path
             slot.filename = path.basename(slot.filename) 
         });
