@@ -10,45 +10,51 @@ logger = setup_logger("crop")
 def process_image(image_path):
     try:
         output_dir = '/data/data/com.termux/files/home/photos/cropped'
-        mask_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/mask.png'
+        blueprint_json_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
         
+
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        
-        mask = cv2.imread(mask_path, 0)
-        analysis = cv2.connectedComponentsWithStats(mask, 4, cv2.CV_32S)
-        (totalLabels, label_ids, stats, centroids) = analysis
-        
+
+        with open(blueprint_json_path, 'r') as json_file:
+            data = json.load(json_file)
+
         slots = []
-        for i in range(1, totalLabels):
-            x1 = stats[i, cv2.CC_STAT_LEFT]
-            y1 = stats[i, cv2.CC_STAT_TOP]
-            w = stats[i, cv2.CC_STAT_WIDTH]
-            h = stats[i, cv2.CC_STAT_HEIGHT]
-            slots.append([x1, y1, w, h])
-        
+        for obj in data['annotations']:
+            x1, y1, w, h = obj['bbox']
+            category_id = obj['category_id']
+            slots.append([x1, y1, w, h, category_id])
+
         image_name = os.path.splitext(os.path.basename(image_path))
-        image_name = str(image_name[0]+image_name[1])
+        image_name = str(image_name[0] + image_name[1])
         image = cv2.imread(image_path + '.jpg')
-        
+
         slot_data = []
         for slot_nmr, slot in enumerate(slots):
-            roi = image[slot[1]:slot[1] + slot[3], slot[0]:slot[0] + slot[2], :]
+            x1, y1, w, h, category_id = slot
+            
+             # Convert x1, y1, w, and h to integers
+            x1, y1, w, h = int(x1), int(y1), int(w), int(h)
+            
+            roi = image[y1:y1 + h, x1:x1 + w, :]
             filename = os.path.join(output_dir, f'{image_name}_{str(slot_nmr).zfill(8)}.jpg')
             cv2.imwrite(filename, roi)
-            
+
+            # Get the category name based on category_id
+            category_name = next((cat['name'] for cat in data['categories'] if cat['id'] == category_id), None)
+
             # Append slot data
             slot_data.append({
                 'filename': filename,
                 'coordinate': {
-                    'x1': str(slot[0]),
-                    'y1': str(slot[1]),
-                    'w': str(slot[2]),
-                    'h': str(slot[3])
+                    'x1': str(x1),
+                    'y1': str(y1),
+                    'w': str(w),
+                    'h': str(h)
                 },
-                'prediction': None  # Placeholder for prediction
+                'lot_name': category_name  # Assign the category name
             })
-        
+
         message = {
             'file_name': image_name,
             'slots': slot_data
@@ -57,7 +63,7 @@ def process_image(image_path):
         print(json.dumps(message))
         sys.stdout.flush()
         sys.exit(0)
-    
+
     except Exception as e:
         error_message = f"An error occurred: {e}"
         logger.error(error_message)
@@ -70,9 +76,9 @@ def process_image(image_path):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        error_message = "Usage: python3 crop.py <full_image_path>"
+        error_message = "Usage: python3 crop.py <full_image_path> "
         logger.error(error_message)
         sys.exit(1)
-    
+
     image_path = sys.argv[1]
     process_image(image_path)
