@@ -56,7 +56,7 @@
       {
         "id": 2,
         "image_id": 1,
-        "category_id": 3,
+        "category_id": 11,
         "segmentation": [],
         "area": 18711.398999999983,
         "bbox": [1416.9, 889.19, 179.9, 104.01],
