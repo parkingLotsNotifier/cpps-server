@@ -6,7 +6,7 @@
 # Node modules
 node_modules/
 src/__pycach__/
-src/logger/__pycache__
+src/logger/__pycache__/
 src/error-notifier/
 logs/*.json
 

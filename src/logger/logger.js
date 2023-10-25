@@ -54,10 +54,6 @@ function createLogger(filename) {
         webhookUrl:'https://hooks.slack.com/services/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'
     })
 
-    const fifoTransport = new winston.transports.File({
-        filename: `${logDir}/${filename}.fifo`,
-        level: 'error'
-    });
 
     const telegramTransport = new Telegram({
         token: process.env.TELEGRAM_TOKEN,
@@ -102,7 +98,7 @@ function createLogger(filename) {
                 return `${timestamp} [${level}]: ${message}`;
             })
         ),
-        transports: [fileTransport,slackInfoTransport,telegramTransport, gmailDest1Transport,gmailDest2Transport,slackErrorTransport,fifoTransport]
+        transports: [fileTransport,slackInfoTransport,telegramTransport, gmailDest1Transport,gmailDest2Transport,slackErrorTransport]
     });
 
     return logger;
