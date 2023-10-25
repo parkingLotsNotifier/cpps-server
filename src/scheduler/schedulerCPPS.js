@@ -10,7 +10,7 @@ const logger = createLogger('schedulerCPPS');
   
   const scheduleCPPS = () => {
    
-      cron.schedule('*/1 * * * *', async () => {
+      cron.schedule('*/30 * * * * *', async () => {
         try {
             logger.info('Running startCPPS service');
             startCPPS();
