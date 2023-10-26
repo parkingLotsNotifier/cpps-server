@@ -45,12 +45,12 @@ function createLogger(filename) {
 
     const slackErrorTransport = new SlackHook({
         level:'error',
-        webhookUrl:'https://hooks.slack.com/services/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'
+        webhookUrl: process.env.SLACK_ERROR
     })
 
     const slackInfoTransport = new SlackHook({
         level:'info',
-        webhookUrl:'https://hooks.slack.com/services/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'
+        webhookUrl: process.env.SLACK_INFO
     })
 
 
