@@ -39,9 +39,8 @@ function createLogger(filename) {
     const fileTransport = new DailyRotateFile({
         filename: `${logDir}/${filename}-%DATE%.log`,
         datePattern: 'DD-MM-YYYY',
-        zippedArchive: true,
         maxSize: '20m',
-        maxFiles: '14d'
+        maxFiles: '2d'
     });
 
     const slackErrorTransport = new SlackHook({
