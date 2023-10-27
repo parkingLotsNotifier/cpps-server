@@ -12,7 +12,7 @@ database.connect(DB_USERNAME, DB_PASSWORD, DB_HOST).then(() => {
     app.use(cors());
     app.use(bodyParser.json());
     
-    scheduler.scheduleCPPS();
+    
 
 
     app.listen(PORT, () => console.log(`example app listening on port ${PORT} ${rest.GREETING}`));
