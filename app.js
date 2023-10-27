@@ -3,7 +3,7 @@ const express = require('express');
 const { PORT, DB_USERNAME, DB_PASSWORD, DB_HOST,TELEGRAM_TOKEN, ...rest } = require('./config/env');
 const database = require('./config/database');
 const cors = require('cors');
-const scheduler = require('./src/scheduler/schedulerCPPS');
+
 
 
 database.connect(DB_USERNAME, DB_PASSWORD, DB_HOST).then(() => {
