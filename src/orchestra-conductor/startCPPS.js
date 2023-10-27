@@ -4,6 +4,7 @@ const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
 const {dataPreperation} = require('../data-preperation/dataPreperation')
+const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 
 const logger = createLogger('startCPPS');
 
@@ -87,8 +88,10 @@ const startCPPS = async () => {
     //remove photos
     //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
     //logger.info(`deleting photos from server`)
+    emitPipelineFinished();
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
+    emitPipelineError(error);
   }
 };
 
