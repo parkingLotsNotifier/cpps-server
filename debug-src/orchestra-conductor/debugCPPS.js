@@ -35,7 +35,7 @@ const debugCPPS = async () => {
   try {
     
     const pathPictures = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/pictures';
-    const pathCropOutput= '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/preditionPhotos/cropOutput'
+    const pathCropOutput= '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/predictionPhotos/cropOutput'
     const pathOccupied ='/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/preditionPhotos/occupied'
     const pathUnoccupied = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/preditionPhotos/unoccupied'
 
