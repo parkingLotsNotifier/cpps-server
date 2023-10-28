@@ -15,12 +15,6 @@ const dataPreperation = (data) => {
             y_coords.push(center.y);
         });
     
-        
-        
-        data.slots.forEach(slot => {
-            //shorten the filename property hence it ia a full path
-            slot.filename = path.basename(slot.filename) 
-        });
     
         return data;
     }
