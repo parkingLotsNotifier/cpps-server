@@ -68,15 +68,22 @@ def predict_occupancy(image_path):
         error_message = f"Error predicting occupancy for {image_path}: {str(e)}"
         logger.error(error_message)
         exit(1)
+    
 
-def main():
+if __name__ == "__main__":
     try:
-        input_message = json.loads(sys.argv[1])
+        if len(sys.argv) != 3:
+            error_message = "Usage: python pytorch_model.py <dest_path> <crop_message>"
+            logger.error(error_message)
+            sys.exit(1)
+
+        src_path,input_message = sys.argv[1:3]
+        input_message = json.loads(input_message)
         slots = input_message['slots']
 
         for slot in slots:
             filename = slot['filename']
-            class_name, confidence_score = predict_occupancy(filename)
+            class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
             slot['prediction'] = {
                 'class': class_name,
                 'confidence': confidence_score
@@ -85,7 +92,7 @@ def main():
         logger.info(f"MobileNet_V3_large predicted : {json.dumps(input_message)}")
         print(json.dumps(input_message))
         sys.stdout.flush()
-        logger.info("MobileNet_V2 predicted and sent via IPC the results to startCPPS")
+        logger.info("MobileNet_V3 predicted and sent via IPC the results to startCPPS")
         sys.exit(0)
     except Exception as e:
         error_message = f"Error in main: {str(e)}"
@@ -96,6 +103,3 @@ def main():
         print(json.dumps(message))
         sys.stdout.flush()
         sys.exit(1)
-
-if __name__ == "__main__":
-    main()
