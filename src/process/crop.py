@@ -7,14 +7,13 @@ from logger.logger import setup_logger
 
 logger = setup_logger("crop")
 
-def process_image(image_path):
+def process_image(src_path,img_name,dest_path):
     try:
-        output_dir = '/data/data/com.termux/files/home/photos/cropped'
         blueprint_json_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
         
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if not os.path.exists(dest_path):
+            os.makedirs(dest_path)
 
         with open(blueprint_json_path, 'r') as json_file:
             data = json.load(json_file)
@@ -25,9 +24,7 @@ def process_image(image_path):
             category_id = obj['category_id']
             slots.append([x1, y1, w, h, category_id])
 
-        image_name = os.path.splitext(os.path.basename(image_path))
-        image_name = str(image_name[0] + image_name[1])
-        image = cv2.imread(image_path + '.jpg')
+        image = cv2.imread(f'{src_path}/{img_name}.jpg')
 
         slot_data = []
         for slot_nmr, slot in enumerate(slots):
@@ -37,7 +34,7 @@ def process_image(image_path):
             x1, y1, w, h = int(x1), int(y1), int(w), int(h)
             
             roi = image[y1:y1 + h, x1:x1 + w, :]
-            filename = os.path.join(output_dir, f'{image_name}_{str(slot_nmr).zfill(8)}.jpg')
+            filename = os.path.join(dest_path, f'{img_name}_{str(slot_nmr).zfill(8)}.jpg')
             cv2.imwrite(filename, roi)
 
             # Get the category name based on category_id
@@ -45,7 +42,7 @@ def process_image(image_path):
 
             # Append slot data
             slot_data.append({
-                'filename': filename,
+                'filename': os.path.basename(filename),
                 'coordinate': {
                     'x1': str(x1),
                     'y1': str(y1),
@@ -56,7 +53,7 @@ def process_image(image_path):
             })
 
         message = {
-            'file_name': image_name,
+            'file_name': img_name,
             'slots': slot_data
         }
         logger.info(f"Sending IPC message: {json.dumps(message)}")
@@ -75,10 +72,10 @@ def process_image(image_path):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        error_message = "Usage: python3 crop.py <full_image_path> "
+    if len(sys.argv) != 4:
+        error_message = "Usage: python3 crop.py <src_path> <img_name> <dest_path>"
         logger.error(error_message)
         sys.exit(1)
 
-    image_path = sys.argv[1]
-    process_image(image_path)
+    src_path,img_name,dest_path = sys.argv[1:4]
+    process_image(src_path,img_name,dest_path)
