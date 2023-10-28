@@ -52,9 +52,14 @@ const startCPPS = async () => {
     if(isRotated){
       logger.info(`photo name ${pictureName} has been rotated `)
     }
+
+    
+    const srcPictureName = '/data/data/com.termux/files/home/photos';
+    const destCropped= '/data/data/com.termux/files/home/photos/cropped';
+
    
     //croped - child process
-    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `/data/data/com.termux/files/home/photos/${pictureName}`], {
+    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${srcPictureName}`,`${pictureName}` , `${destCropped}`], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     const isCropped = croppedMessage.file_name != undefined ? true:false
@@ -63,8 +68,9 @@ const startCPPS = async () => {
     }
     logger.info(`photo name ${pictureName} has been cropped `)
     
+    
     //prediction - child process
-    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', JSON.stringify(croppedMessage)], {
+    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(croppedMessage)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });    
     const isPredict = pytorchMessage.slots[0].prediction != undefined ? true:false;
