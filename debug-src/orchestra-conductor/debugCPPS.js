@@ -1,8 +1,9 @@
-const path = require('path');
 const { spawn } = require('child_process');
 const {createLogger} = require('../../src/logger/logger');
 const {dataPreperation} = require('../../src/data-preperation/dataPreperation')
 const fs = require('fs');
+const util = require('util');
+
 
 const logger = createLogger('debugCPPS');
 
@@ -33,19 +34,22 @@ const executeChildProcess = (cmd, args, options) => {
 
 const debugCPPS = async () => {
   try {
+
+    //srcPictureName  
+//destCropped
     
-    const pathPictures = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/pictures';
-    const pathCropOutput= '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/predictionPhotos/cropOutput'
-    const pathOccupied ='/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/preditionPhotos/occupied'
-    const pathUnoccupied = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/preditionPhotos/unoccupied'
+    const srcPictureName = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/pictures';
+    const destCropped= '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/predictionPhotos/cropOutput'
+    const pathOccupied ='/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/predictionPhotos/occupied'
+    const pathUnoccupied = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/predictionPhotos/unoccupied'
 
 
-    const fileNames = fs.readdirSync(pathPictures);
+    const fileNames = fs.readdirSync(srcPictureName);
     
     fileNames.forEach(async (pictureName) => {
     
       //croped - child process
-    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${pathPictures}/${pictureName.slice(0,-4)}`], {
+    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py',`${srcPictureName}`, `${pictureName.slice(0,-4)}`,`${destCropped}`], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     const isCropped = croppedMessage.file_name != undefined ? true:false
@@ -54,18 +58,9 @@ const debugCPPS = async () => {
     }
     logger.info(`photo name ${pictureName} has been cropped `)
     
-    
-    //move 
-    croppedMessage.slots.forEach((slot)=>
-      {
-        spawn('mv', [`${slot.filename}`, `${pathCropOutput}`], {shell: true});
-        slot.filename = `${pathCropOutput}`+'/' + path.basename(slot.filename);
-      });
-    
-    
 
     //prediction - child process
-    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', JSON.stringify(croppedMessage)], {
+    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py',  `${destCropped}`,JSON.stringify(croppedMessage)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });  
     
@@ -79,17 +74,17 @@ const debugCPPS = async () => {
     //move predictions
     pytorchMessage.slots.forEach((slot)=>{
        if(slot.prediction.class == "occupied"){
-        spawn('mv', [`${slot.filename}`,`${pathOccupied}`]);
+        spawn('mv', [`${destCropped}/${slot.filename}`,`${pathOccupied}`]);
        }
        else{
-        spawn('mv', [`${slot.filename}`,`${pathUnoccupied}`]);
+        spawn('mv', [`${destCropped}/${slot.filename}`,`${pathUnoccupied}`]);
        }
 
     });
         
-
+   
    //prepair data 
-   console.log(await dataPreperation(pytorchMessage));
+   console.log( util.inspect( await dataPreperation(pytorchMessage),{ depth: null }));
    
    
   });
