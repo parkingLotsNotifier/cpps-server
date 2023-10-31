@@ -89,6 +89,18 @@ const startCPPS = async () => {
     if(isStored){
       logger.info(`predictions has been saved to DB`)
     }
+
+    const sleep = (secs) => {
+      return new Promise((resolve) => {
+        setTimeout(resolve, secs * 1000); 
+      });
+    }
+
+    //rest
+    const isResting = await sleep(5);
+    if(isResting){
+      logger.info('zZzZ.. Server is well rested')
+    }
       
     const homeDir = require('os').homedir();
     //remove photos
