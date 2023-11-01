@@ -40,7 +40,7 @@ const startCPPS = async () => {
     const pictureName = await capturePhoto();
     const isCaptured = pictureName != undefined ? true:false
     if(isCaptured){
-      logger.info(`photo name ${pictureName} has been captured `)
+      logger.verbose(`photo name ${pictureName} has been captured `)
     }
     
     /**
@@ -50,7 +50,7 @@ const startCPPS = async () => {
     //rotate
     const isRotated = await rotateImage(`/data/data/com.termux/files/home/photos/${pictureName}.jpg`);
     if(isRotated){
-      logger.info(`photo name ${pictureName} has been rotated `)
+      logger.verbose(`photo name ${pictureName} has been rotated `)
     }
 
     
@@ -66,7 +66,7 @@ const startCPPS = async () => {
     if(!isCropped){
       throw new Error(croppedMessage.error)
     }
-    logger.info(`photo name ${pictureName} has been cropped `)
+    logger.verbose(`photo name ${pictureName} has been cropped `)
     
     
     //prediction - child process
@@ -77,7 +77,7 @@ const startCPPS = async () => {
     if(!isPredict){
       throw new Error(pytorchMessage.error)
     }
-    logger.info(`photo name ${pictureName} has been predicted`);
+    logger.verbose(`photo name ${pictureName} has been predicted`);
     
    //prepair data for store
    const prepairedData = await dataPreperation(pytorchMessage);
@@ -87,13 +87,15 @@ const startCPPS = async () => {
    //store
     const isStored = await storeParkingLotsData(prepairedData);
     if(isStored){
-      logger.info(`predictions has been saved to DB`)
+      logger.verbose(`predictions has been saved to DB`)
     }
       
     const homeDir = require('os').homedir();
     //remove photos
-    //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
-    //logger.info(`deleting photos from server`)
+    spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
+    logger.verbose(`deleting photos from server`)
+
+    logger.info('cpps is running');
     emitPipelineFinished();
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
