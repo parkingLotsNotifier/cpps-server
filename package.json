@@ -4,10 +4,10 @@
   "description": "CPPS Server",
   "main": "app.js",
   "scripts": {
-    "watch": "node app.js",
+    "verbose": "nodemon app.js verbose",
     "start": "nodemon app.js",
-    "debug": "nodemon appDebug.js"
-  },
+    "debug": "nodemon appDebug.js debug"
+  }, 
   "keywords": [],
   "author": "",
   "license": "ISC",
