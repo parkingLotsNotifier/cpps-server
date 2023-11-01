@@ -4,6 +4,7 @@ const Telegram = require('winston-telegram');
 const { Mail } = require('winston-mail');
 const SlackHook = require("winston-slack-webhook-transport");
 
+const isVerbose =  process.argv.includes('verbose') || process.argv.includes('debug');
 const COOLDOWN_PERIOD = 10 * 60 * 1000; // 10 minutes in milliseconds
 const lastUrgentLogTimestamps = {};
 
@@ -18,7 +19,7 @@ function canSendUrgentLog(serviceName) {
 
 function applyCooldown(transportName) {
     return winston.format((info, opts) => {
-        if (info.level === 'error' && !canSendUrgentLog(transportName)) {
+        if ( info.level === 'error' && !canSendUrgentLog(transportName)) {
             return false;
         }
         lastUrgentLogTimestamps[transportName] = Date.now();
@@ -45,12 +46,20 @@ function createLogger(filename) {
 
     const slackErrorTransport = new SlackHook({
         level:'error',
-        webhookUrl: process.env.SLACK_ERROR
+        webhookUrl: process.env.SLACK_ERROR,
+        format : applyCooldown('slackErrorTransport')
     })
 
-    const slackInfoTransport = new SlackHook({
+    const slackVerboseTransport = new SlackHook({
+        level:'verbose',
+        webhookUrl: process.env.SLACK_INFO,
+        
+    })
+
+    const slackVerInfoTransport = new SlackHook({
         level:'info',
-        webhookUrl: process.env.SLACK_INFO
+        webhookUrl: process.env.SLACK_INFO,
+        
     })
 
 
@@ -58,8 +67,7 @@ function createLogger(filename) {
         token: process.env.TELEGRAM_TOKEN,
         chatId: process.env.CHAT_ID,
         level: 'error',
-        format: applyCooldown(filename + '-telegram')
-        
+        format: applyCooldown('telegramTransport')
     });
 
     const gmailDest1Transport = new Mail({
@@ -73,7 +81,7 @@ function createLogger(filename) {
         port: '587',
         tls: true,
         authentication: 'LOGIN',
-        format: applyCooldown(filename + '-gmail')
+        format: applyCooldown('gmailDest1Transport')
     });
 
     const gmailDest2Transport = new Mail({
@@ -87,9 +95,22 @@ function createLogger(filename) {
         port: '587',
         tls: true,
         authentication: 'LOGIN',
-        format: applyCooldown(filename + '-gmail')
+        format: applyCooldown('gmailDest1Transport')
     });
 
+    const loggerTransports = [
+        fileTransport,
+        telegramTransport,
+        gmailDest1Transport,
+        gmailDest2Transport,
+        slackErrorTransport,
+        slackVerInfoTransport
+    ];
+    
+    if (isVerbose) {
+        loggerTransports.push(slackVerboseTransport);
+    }
+    
     const logger = winston.createLogger({
         format: winston.format.combine(
             customTimestamp({ timestamp: true }),
@@ -97,9 +118,9 @@ function createLogger(filename) {
                 return `${timestamp} [${level}]: ${message}`;
             })
         ),
-        transports: [fileTransport,slackInfoTransport,telegramTransport, gmailDest1Transport,gmailDest2Transport,slackErrorTransport]
+        transports: loggerTransports
     });
-
+    
     return logger;
 }
 
