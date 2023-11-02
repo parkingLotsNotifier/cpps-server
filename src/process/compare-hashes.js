@@ -1,5 +1,5 @@
-function compareHashes(oldMessage, newMessage) {
-    const threshold = 5;
+function compareHashes(oldMessage, newMessage,threshold) {
+    
     if (!oldMessage || !newMessage || !Array.isArray(oldMessage.slots) || !Array.isArray(newMessage.slots)) {
         throw new Error('Invalid messages provided.');
     }

@@ -70,8 +70,8 @@ const startCPPS = async () => {
     }
     logger.verbose(`photo name ${pictureName} has been cropped `)
     
-        
-      newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage)
+      const threshold = 10;
+      newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage,threshold);
       
       //prediction - child process
       const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(newCroppedMessage)], {
