@@ -82,12 +82,14 @@ if __name__ == "__main__":
         slots = input_message['slots']
 
         for slot in slots:
-            filename = slot['filename']
-            class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
-            slot['prediction'] = {
-                'class': class_name,
-                'confidence': confidence_score
-            }
+            isPredictExist = hasattr(slot, 'toPredict')
+            if ((not isPredictExist) or (slot['toPredict'] is True ))   :
+                filename = slot['filename']
+                class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
+                slot['prediction'] = {
+                    'class': class_name,
+                    'confidence': confidence_score
+                }
 
         logger.info(f"MobileNet_V3_large predicted : {json.dumps(input_message)}")
         print(json.dumps(input_message))
