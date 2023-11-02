@@ -2,16 +2,30 @@ import os
 import cv2
 import sys
 import json
+import numpy as np
 sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
 from logger.logger import setup_logger
 
 logger = setup_logger("crop")
 
+
+
+def compute_binary_string(image):
+    # Copy the image
+    #image_copy = image.copy()
+    # Convert to grayscale
+    #gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+    # Calculate the average value
+    avg = image.mean()
+    return avg
+
+
+
+
 def process_image(src_path,img_name,dest_path):
     try:
         blueprint_json_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
         
-
         if not os.path.exists(dest_path):
             os.makedirs(dest_path)
 
@@ -30,12 +44,15 @@ def process_image(src_path,img_name,dest_path):
         for slot_nmr, slot in enumerate(slots):
             x1, y1, w, h, category_id = slot
             
-             # Convert x1, y1, w, and h to integers
+            # Convert x1, y1, w, and h to integers
             x1, y1, w, h = int(x1), int(y1), int(w), int(h)
             
             roi = image[y1:y1 + h, x1:x1 + w, :]
             filename = os.path.join(dest_path, f'{img_name}_{str(slot_nmr).zfill(8)}.jpg')
             cv2.imwrite(filename, roi)
+
+            # Compute the hash of the cropped image
+            histogram = compute_binary_string(roi)
 
             # Get the category name based on category_id
             category_name = next((cat['name'] for cat in data['categories'] if cat['id'] == category_id), None)
@@ -49,7 +66,8 @@ def process_image(src_path,img_name,dest_path):
                     'w': str(w),
                     'h': str(h)
                 },
-                'lot_name': category_name  # Assign the category name
+                'lot_name': category_name,  # Assign the category name
+                'hash_value': histogram    # Store the hash value
             })
 
         message = {
