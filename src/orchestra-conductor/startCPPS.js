@@ -3,8 +3,9 @@ const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-const {dataPreperation} = require('../data-preperation/dataPreperation')
+const {dataPreparation} = require('../data-preperation/dataPreperation')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
+const {compareHashes} = require('../process/compare-hashes')
 
 const logger = createLogger('startCPPS');
 
@@ -32,10 +33,11 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
+let oldCropMessage;
 
 const startCPPS = async () => {
   try {
-    
+   
     //cature
     const pictureName = await capturePhoto();
     const isCaptured = pictureName != undefined ? true:false
@@ -59,44 +61,49 @@ const startCPPS = async () => {
 
    
     //croped - child process
-    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${srcPictureName}`,`${pictureName}` , `${destCropped}`], {
+    let newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${srcPictureName}`,`${pictureName}` , `${destCropped}`], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
-    const isCropped = croppedMessage.file_name != undefined ? true:false
+    const isCropped = newCroppedMessage.file_name != undefined ? true:false
     if(!isCropped){
-      throw new Error(croppedMessage.error)
+      throw new Error(newCroppedMessage.error)
     }
     logger.verbose(`photo name ${pictureName} has been cropped `)
     
-    
-    //prediction - child process
-    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(croppedMessage)], {
-      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-    });    
-    const isPredict = pytorchMessage.slots[0].prediction != undefined ? true:false;
-    if(!isPredict){
-      throw new Error(pytorchMessage.error)
-    }
-    logger.verbose(`photo name ${pictureName} has been predicted`);
-    
-   //prepair data for store
-   const prepairedData = await dataPreperation(pytorchMessage);
+        
+      newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage)
       
+      //prediction - child process
+      const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(newCroppedMessage)], {
+        stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+      });    
+      const isPredict = pytorchMessage.file_name != undefined ? true:false;
+      if(!isPredict){
+        throw new Error(pytorchMessage.error)
+      }
+      logger.verbose(`photo name ${pictureName} has been predicted`);
 
-    
-   //store
-    const isStored = await storeParkingLotsData(prepairedData);
-    if(isStored){
-      logger.verbose(`predictions has been saved to DB`)
-    }
+      //prepair data for store
+      const prepairedData = await dataPreparation(pytorchMessage,oldCropMessage);
+        
+
+
+      //store
+      const isStored = await storeParkingLotsData(prepairedData);
+      if(isStored){
+        logger.verbose(`predictions has been saved to DB`)
+      }
+        
+      const homeDir = require('os').homedir();
+      //remove photos
+      spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
+      logger.verbose(`deleting photos from server`)
       
-    const homeDir = require('os').homedir();
-    //remove photos
-    spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
-    logger.verbose(`deleting photos from server`)
-
-    logger.info('cpps is running');
-    emitPipelineFinished();
+      oldCropMessage = newCroppedMessage;
+      logger.info('cpps is running');
+      emitPipelineFinished();
+   
+    
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
     emitPipelineError(error);
