@@ -37,7 +37,16 @@ function createLogger(filename) {
         return info;
     });
 
-    const fileTransport = new DailyRotateFile({
+    const fileVerboseTransport = new DailyRotateFile({
+        level:'verbose',
+        filename: `${logDir}/${filename}-%DATE%.log`,
+        datePattern: 'DD-MM-YYYY',
+        maxSize: '20m',
+        maxFiles: '2d'
+    });
+
+    const fileInfoTransport = new DailyRotateFile({
+        level:'info',
         filename: `${logDir}/${filename}-%DATE%.log`,
         datePattern: 'DD-MM-YYYY',
         maxSize: '20m',
@@ -99,7 +108,7 @@ function createLogger(filename) {
     });
 
     const loggerTransports = [
-        fileTransport,
+        fileInfoTransport,
         telegramTransport,
         gmailDest1Transport,
         gmailDest2Transport,
@@ -108,7 +117,7 @@ function createLogger(filename) {
     ];
     
     if (isVerbose) {
-        loggerTransports.push(slackVerboseTransport);
+        loggerTransports.push(slackVerboseTransport,fileVerboseTransport);
     }
     
     const logger = winston.createLogger({
