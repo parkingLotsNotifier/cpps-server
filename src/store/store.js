@@ -18,7 +18,7 @@ const storeParkingLotsData = async (parkingData) => {
     // Save the document to the database
     await parkingLot.save();
     
-    logger.info('Parking data has been stored successfully.');
+    logger.verbose('Parking data has been stored successfully.');
     
     return true;
   } catch (error) {
