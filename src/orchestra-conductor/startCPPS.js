@@ -3,7 +3,7 @@ const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-const {dataPreparation} = require('../data-preperation/dataPreparation')
+const {dataPreparation} = require('../data-preparation/dataPreparation')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 
@@ -112,7 +112,7 @@ const startCPPS = async () => {
     //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
     //logger.info(`deleting photos from server`)
     oldCropMessage =newCroppedMessage;
-    logger.verbose('CPPS has completed the run')
+    logger.info('CPPS has completed the run')
     emitPipelineFinished();
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
