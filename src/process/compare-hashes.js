@@ -15,8 +15,10 @@ function compareHashes(oldMessage, newMessage,threshold) {
         const newSlot = newMessage.slots[i];
         
         // Compare hash values and set the toPredict flag
+        //console.log(oldSlot.hash_value - newSlot.hash_value);
         newSlot.toPredict = Math.abs(oldSlot.hash_value - newSlot.hash_value) > threshold ? true:false;
     }
+    //console.log('--------------');
        
     return newMessage;  // Return the updated newMessage with toPredict flags set
 }
