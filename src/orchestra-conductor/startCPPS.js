@@ -3,7 +3,7 @@ const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-const {dataPreparation} = require('../data-preperation/dataPreperation')
+const {dataPreparation} = require('../data-preperation/dataPreparation')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 
@@ -91,7 +91,7 @@ const startCPPS = async () => {
    //store
     const isStored = await storeParkingLotsData(prepairedData);
     if(isStored){
-      logger.info(`predictions has been saved to DB`)
+      logger.verbose(`predictions has been saved to DB`)
     }
     
     const sleep = (secs) => {
@@ -103,7 +103,7 @@ const startCPPS = async () => {
     //rest
     const isResting = await sleep(5);
     if(isResting){
-      logger.info('zZzZ.. Server is well rested')
+      logger.verbose('zZzZ.. Server is well rested')
     }
       
       
@@ -111,6 +111,8 @@ const startCPPS = async () => {
     //remove photos
     //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
     //logger.info(`deleting photos from server`)
+    oldCropMessage =newCroppedMessage;
+    logger.verbose('CPPS has completed the run')
     emitPipelineFinished();
   } catch (error) {
     logger.error(`Error in startCPPS: ${error.message}`);
