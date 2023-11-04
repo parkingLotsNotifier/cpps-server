@@ -10,11 +10,7 @@ logger = setup_logger("crop")
 
 
 
-def compute_binary_string(image):
-    # Copy the image
-    #image_copy = image.copy()
-    # Convert to grayscale
-    #gray_image = cv2.cvtColor(image_copy, cv2.COLOR_BGR2GRAY)
+def pixel_density(image):
     # Calculate the average value
     avg = image.mean()
     return avg
@@ -52,7 +48,7 @@ def process_image(src_path,img_name,dest_path):
             cv2.imwrite(filename, roi)
 
             # Compute the hash of the cropped image
-            histogram = compute_binary_string(roi)
+            avg = pixel_density(roi)
 
             # Get the category name based on category_id
             category_name = next((cat['name'] for cat in data['categories'] if cat['id'] == category_id), None)
@@ -67,7 +63,7 @@ def process_image(src_path,img_name,dest_path):
                     'h': str(h)
                 },
                 'lot_name': category_name,  # Assign the category name
-                'hash_value': histogram    # Store the hash value
+                'hash_value': avg    # Store the hash value
             })
 
         message = {
