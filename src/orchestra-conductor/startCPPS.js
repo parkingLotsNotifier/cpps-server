@@ -3,8 +3,9 @@ const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-const {dataPreperation} = require('../data-preperation/dataPreperation')
+const {dataPreparation} = require('../data-preperation/dataPreperation')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
+const {compareHashes} = require('../process/compare-hashes')
 
 const logger = createLogger('startCPPS');
 
@@ -32,15 +33,16 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
+let oldCropMessage;
 
 const startCPPS = async () => {
   try {
-    
+   
     //cature
     const pictureName = await capturePhoto();
     const isCaptured = pictureName != undefined ? true:false
     if(isCaptured){
-      logger.info(`photo name ${pictureName} has been captured `)
+      logger.verbose(`photo name ${pictureName} has been captured `)
     }
     
     /**
@@ -50,7 +52,7 @@ const startCPPS = async () => {
     //rotate
     const isRotated = await rotateImage(`/data/data/com.termux/files/home/photos/${pictureName}.jpg`);
     if(isRotated){
-      logger.info(`photo name ${pictureName} has been rotated `)
+      logger.verbose(`photo name ${pictureName} has been rotated `)
     }
 
     
@@ -59,29 +61,31 @@ const startCPPS = async () => {
 
    
     //croped - child process
-    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${srcPictureName}`,`${pictureName}` , `${destCropped}`], {
+    let newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${srcPictureName}`,`${pictureName}` , `${destCropped}`], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
-    const isCropped = croppedMessage.file_name != undefined ? true:false
+    const isCropped = newCroppedMessage.file_name != undefined ? true:false
     if(!isCropped){
-      throw new Error(croppedMessage.error)
+      throw new Error(newCroppedMessage.error)
     }
-    logger.info(`photo name ${pictureName} has been cropped `)
+    logger.verbose(`photo name ${pictureName} has been cropped `)
     
-    
-    //prediction - child process
-    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(croppedMessage)], {
-      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-    });    
-    const isPredict = pytorchMessage.slots[0].prediction != undefined ? true:false;
-    if(!isPredict){
-      throw new Error(pytorchMessage.error)
-    }
-    logger.info(`photo name ${pictureName} has been predicted`);
-    
-   //prepair data for store
-   const prepairedData = await dataPreperation(pytorchMessage);
+      const threshold = 10;
+      newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage,threshold);
       
+      //prediction - child process
+      const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(newCroppedMessage)], {
+        stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+      });    
+      const isPredict = pytorchMessage.file_name != undefined ? true:false;
+      if(!isPredict){
+        throw new Error(pytorchMessage.error)
+      }
+      logger.verbose(`photo name ${pictureName} has been predicted`);
+
+      //prepair data for store
+      const prepairedData = await dataPreparation(pytorchMessage,oldCropMessage);
+        
 
     
    //store
@@ -89,7 +93,7 @@ const startCPPS = async () => {
     if(isStored){
       logger.info(`predictions has been saved to DB`)
     }
-
+    
     const sleep = (secs) => {
       return new Promise((resolve) => {
         setTimeout(resolve, secs * 1000); 
@@ -101,6 +105,7 @@ const startCPPS = async () => {
     if(isResting){
       logger.info('zZzZ.. Server is well rested')
     }
+      
       
     const homeDir = require('os').homedir();
     //remove photos

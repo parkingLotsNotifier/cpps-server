@@ -18,7 +18,7 @@ const capturePhoto = () => {
 
       const device_model = stdout.trim();
       const file_name = `picture-${device_model}-${new Date().toLocaleString('he-IL',{ hour12: false }).replace(/, /g, '-')}`;
-      logger.info(`Device Model: ${device_model}, File Name: ${file_name}`);
+      logger.verbose(`Device Model: ${device_model}, File Name: ${file_name}`);
 
       // Capture photo
       exec(`termux-camera-photo ~/photos/${file_name}.jpg`, (error) => {
@@ -28,7 +28,7 @@ const capturePhoto = () => {
           return;
         }
 
-        logger.info('Photo taken successfully.');
+        logger.verbose('Photo taken successfully.');
         resolve(file_name);
       });
     });

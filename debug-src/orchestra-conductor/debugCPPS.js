@@ -1,6 +1,6 @@
 const { spawn } = require('child_process');
 const {createLogger} = require('../../src/logger/logger');
-const {dataPreperation} = require('../../src/data-preperation/dataPreperation')
+const {dataPreparation} = require('../../src/data-preperation/dataPreperation')
 const fs = require('fs');
 const util = require('util');
 
@@ -31,12 +31,10 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
-
+let oldMessage;
 const debugCPPS = async () => {
   try {
 
-    //srcPictureName  
-//destCropped
     
     const srcPictureName = '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/pictures';
     const destCropped= '/data/data/com.termux/files/home/project-root-directory/cpps-server/debug-src/debugOutput/predictionPhotos/cropOutput'
@@ -48,7 +46,7 @@ const debugCPPS = async () => {
     
     fileNames.forEach(async (pictureName) => {
     
-      //croped - child process
+    //croped - child process
     const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py',`${srcPictureName}`, `${pictureName.slice(0,-4)}`,`${destCropped}`], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
@@ -56,7 +54,7 @@ const debugCPPS = async () => {
     if(!isCropped){
       throw new Error(croppedMessage.error)
     }
-    logger.info(`photo name ${pictureName} has been cropped `)
+    logger.verbose(`photo name ${pictureName} has been cropped `)
     
 
     //prediction - child process
@@ -68,7 +66,7 @@ const debugCPPS = async () => {
     if(!isPredict){
       throw new Error(pytorchMessage.error);
     }
-    logger.info(`photo name ${pictureName} has been predicted`);
+    logger.verbose(`photo name ${pictureName} has been predicted`);
 
     
     //move predictions
@@ -84,7 +82,7 @@ const debugCPPS = async () => {
         
    
    //prepair data 
-   console.log( util.inspect( await dataPreperation(pytorchMessage),{ depth: null }));
+   console.log( util.inspect( await dataPreparation(pytorchMessage,oldMessage),{ depth: null }));
    
    
   });

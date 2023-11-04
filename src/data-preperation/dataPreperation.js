@@ -1,22 +1,34 @@
 
-const path = require('path'); 
-const dataPreperation = (data) => {
-   
-    const processJSONData = (data) => {
+const dataPreparation = (newData, oldData) => {
+
+    const processJSONData = (newData,oldData) => {
         // Extract the parking name
-        data['parking_name'] = "Student residences";
+        newData['parking_name'] = "Student residences";
     
         // Calculate centroids
         let x_coords = [];
         let y_coords = [];
-        data.slots.forEach(slot => {
+        newData.slots.forEach((slot, index) => {
             let center = calculateCenter(slot.coordinate);
             x_coords.push(center.x);
             y_coords.push(center.y);
+            
+            // Check if toPredict flag is false
+            if (slot.toPredict === false ) {
+                // Copy prediction from oldData to newData
+                if (oldData.slots[index] && oldData.slots[index].prediction) {
+                    slot.prediction = oldData.slots[index].prediction;
+                }
+                
+            }
+            
+
+            // Delete hash and toPredict fields
+            delete slot.hash_value;  // Assuming the field is named 'hash_value'
+            delete slot.toPredict;
         });
     
-    
-        return data;
+        return newData;
     }
     
     const calculateCenter = (coordinate) => {
@@ -28,11 +40,9 @@ const dataPreperation = (data) => {
         };
     }
 
-return processJSONData(data);
-
+    return processJSONData(newData,oldData);
 };
 
-
 module.exports = {
-   dataPreperation,
+   dataPreparation,
 };
