@@ -81,9 +81,10 @@ if __name__ == "__main__":
         input_message = json.loads(input_message)
         slots = input_message['slots']
 
+        
+        isToPredict = True if 'toPredict' in slots[0] else False
         for slot in slots:
-            isPredictExist = hasattr(slot, 'toPredict')
-            if ((not isPredictExist) or (slot['toPredict'] is True ))   :
+            if ((not isToPredict) or (slot['toPredict'] is True )):
                 filename = slot['filename']
                 class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
                 slot['prediction'] = {
