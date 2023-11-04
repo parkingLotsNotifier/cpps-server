@@ -1,6 +1,6 @@
 const { spawn } = require('child_process');
 const {createLogger} = require('../../src/logger/logger');
-const {dataPreparation} = require('../../src/data-preperation/dataPreperation')
+const {dataPreparation} = require('../../src/data-preparation/dataPreparation')
 const fs = require('fs');
 const util = require('util');
 
