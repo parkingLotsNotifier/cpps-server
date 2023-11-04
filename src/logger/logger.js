@@ -4,7 +4,8 @@ const Telegram = require('winston-telegram');
 const { Mail } = require('winston-mail');
 const SlackHook = require("winston-slack-webhook-transport");
 
-const isVerbose =  process.argv.includes('verbose') || process.argv.includes('debug');
+const isVerbose =  process.argv.includes('verbose') 
+const isDebug =  process.argv.includes('debug');
 const COOLDOWN_PERIOD = 10 * 60 * 1000; // 10 minutes in milliseconds
 const lastUrgentLogTimestamps = {};
 
@@ -65,11 +66,6 @@ function createLogger(filename) {
         
     })
 
-    const slackVerInfoTransport = new SlackHook({
-        level:'info',
-        webhookUrl: process.env.SLACK_INFO,
-        
-    })
 
 
     const telegramTransport = new Telegram({
@@ -104,20 +100,29 @@ function createLogger(filename) {
         port: '587',
         tls: true,
         authentication: 'LOGIN',
-        format: applyCooldown('gmailDest1Transport')
+        format: applyCooldown('gmailDest1Transport')  
     });
 
+    const consoleTransport = new winston.transports.Console({
+        level:'info'
+    })
+
     const loggerTransports = [
-        fileInfoTransport,
         telegramTransport,
         gmailDest1Transport,
         gmailDest2Transport,
         slackErrorTransport,
-        slackVerInfoTransport
+        
     ];
     
     if (isVerbose) {
         loggerTransports.push(slackVerboseTransport,fileVerboseTransport);
+    }
+    if(isDebug){
+        loggerTransports.push(fileVerboseTransport);
+    }
+    else{
+        loggerTransports.push(consoleTransport);
     }
     
     const logger = winston.createLogger({
