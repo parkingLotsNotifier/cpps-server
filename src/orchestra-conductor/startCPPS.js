@@ -6,7 +6,6 @@ const {createLogger} = require('../logger/logger');
 const {dataPreparation} = require('../data-preparation/dataPreparation')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
-
 const logger = createLogger('startCPPS');
 
 const executeChildProcess = (cmd, args, options) => {
@@ -37,7 +36,7 @@ let oldCropMessage;
 
 const startCPPS = async () => {
   try {
-   
+     
     //cature
     const pictureName = await capturePhoto();
     const isCaptured = pictureName != undefined ? true:false
@@ -72,19 +71,18 @@ const startCPPS = async () => {
     
       const threshold = 10;
       newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage,threshold);
-      
       //prediction - child process
-      const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(newCroppedMessage)], {
+      newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(newCroppedMessage)], {
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });    
-      const isPredict = pytorchMessage.file_name != undefined ? true:false;
+      const isPredict = newCroppedMessage.file_name != undefined ? true:false;
       if(!isPredict){
-        throw new Error(pytorchMessage.error)
+        throw new Error(newCroppedMessage.error)
       }
       logger.verbose(`photo name ${pictureName} has been predicted`);
 
       //prepair data for store
-      const prepairedData = await dataPreparation(pytorchMessage,oldCropMessage);
+      const prepairedData = await dataPreparation(newCroppedMessage, oldCropMessage);
         
 
     

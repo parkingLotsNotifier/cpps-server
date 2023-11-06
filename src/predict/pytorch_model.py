@@ -81,7 +81,7 @@ if __name__ == "__main__":
         input_message = json.loads(input_message)
         slots = input_message['slots']
 
-        
+        # Checks if entered on the first run, if so isToPredict equals False
         isToPredict = True if 'toPredict' in slots[0] else False
         for slot in slots:
             if ((not isToPredict) or (slot['toPredict'] is True )):
@@ -91,7 +91,7 @@ if __name__ == "__main__":
                     'class': class_name,
                     'confidence': confidence_score
                 }
-
+    
         logger.info(f"MobileNet_V3_large predicted : {json.dumps(input_message)}")
         print(json.dumps(input_message))
         sys.stdout.flush()
