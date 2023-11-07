@@ -80,9 +80,14 @@ const startCPPS = async () => {
         throw new Error(newCroppedMessage.error)
       }
       logger.verbose(`photo name ${pictureName} has been predicted`);
+      
+     
+      //deep clone to preserve information of old message
+      const oldClonedCroppedMessage = structuredClone(oldCropMessage)
+      oldCropMessage = structuredClone(newCroppedMessage);
 
       //prepair data for store
-      const prepairedData = await dataPreparation(newCroppedMessage, oldCropMessage);
+      const prepairedData = await dataPreparation(newCroppedMessage, oldClonedCroppedMessage);
         
 
     
@@ -109,7 +114,6 @@ const startCPPS = async () => {
     //remove photos
     //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
     //logger.info(`deleting photos from server`)
-    oldCropMessage =newCroppedMessage;
     logger.info('CPPS has completed the run')
     emitPipelineFinished();
   } catch (error) {
