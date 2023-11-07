@@ -8,6 +8,7 @@ const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 const logger = createLogger('startCPPS');
 
+//TODO: check if it is lazy cconstructed
 const executeChildProcess = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, options);
@@ -32,13 +33,17 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
+
 let oldCropMessage;
+const srcPicturePath = '/data/data/com.termux/files/home/photos';
+const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
+const pythonCropScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py'
 
 const startCPPS = async () => {
   try {
      
-    //cature
-    const pictureName = await capturePhoto();
+    //capture
+    const pictureName = await capturePhoto(); //TODO: we only looked breafly on capturePhoto
     const isCaptured = pictureName != undefined ? true:false
     if(isCaptured){
       logger.verbose(`photo name ${pictureName} has been captured `)
@@ -49,18 +54,14 @@ const startCPPS = async () => {
     */
     
     //rotate
-    const isRotated = await rotateImage(`/data/data/com.termux/files/home/photos/${pictureName}.jpg`);
+    const isRotated = await rotateImage(`${srcPicturePath}/${pictureName}.jpg`);//TODO: why on capturePhoto we used spawn and here exec ? , is rotateImage can be a python script ?
     if(isRotated){
       logger.verbose(`photo name ${pictureName} has been rotated `)
     }
 
-    
-    const srcPictureName = '/data/data/com.termux/files/home/photos';
-    const destCropped= '/data/data/com.termux/files/home/photos/cropped';
-
    
     //croped - child process
-    let newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py', `${srcPictureName}`,`${pictureName}` , `${destCropped}`], {
+    let newCroppedMessage = await executeChildProcess('python', [`${pythonCropScriptPath}`, `${srcPicturePath}`,`${pictureName}` , `${destCroppedPicturesPath}`], {//TODO: comments inside crop.py
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     const isCropped = newCroppedMessage.file_name != undefined ? true:false
@@ -72,7 +73,7 @@ const startCPPS = async () => {
       const threshold = 10;
       newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage,threshold);
       //prediction - child process
-      newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCropped}`,JSON.stringify(newCroppedMessage)], {
+      newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCroppedPicturesPath}`,JSON.stringify(newCroppedMessage)], {
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });    
       const isPredict = newCroppedMessage.file_name != undefined ? true:false;
