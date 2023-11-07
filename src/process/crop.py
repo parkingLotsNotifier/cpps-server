@@ -3,24 +3,23 @@ import cv2
 import sys
 import json
 import numpy as np
-sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
+sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/') #TODO: who is using this? is it needed? 
 from logger.logger import setup_logger
 
 logger = setup_logger("crop")
+blueprint_json_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 
 
-
-def pixel_density(image):
+def compute_average_intensity(image):
     # Calculate the average value
     avg = image.mean()
     return avg
 
 
 
-
+#TODO: process_image needs to be reconstructed into sub scripts
 def process_image(src_path,img_name,dest_path):
     try:
-        blueprint_json_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
         
         if not os.path.exists(dest_path):
             os.makedirs(dest_path)
@@ -48,7 +47,7 @@ def process_image(src_path,img_name,dest_path):
             cv2.imwrite(filename, roi)
 
             # Compute the hash of the cropped image
-            avg = pixel_density(roi)
+            avg = compute_average_intensity(roi)
 
             # Get the category name based on category_id
             category_name = next((cat['name'] for cat in data['categories'] if cat['id'] == category_id), None)
