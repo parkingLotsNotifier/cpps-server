@@ -34,11 +34,11 @@ const executeChildProcess = (cmd, args, options) => {
 };
 
 
-let oldCropMessage;
+let prevMsg;
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
-const pythonCropScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py'
-
+const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/image_crop_name_save.py'
+const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 const startCPPS = async () => {
   try {
      
@@ -61,34 +61,35 @@ const startCPPS = async () => {
 
    
     //croped - child process
-    let newCroppedMessage = await executeChildProcess('python', [`${pythonCropScriptPath}`, `${srcPicturePath}`,`${pictureName}` , `${destCroppedPicturesPath}`], {//TODO: comments inside crop.py
+    let currMsg = await executeChildProcess('python', [`${pyImageCropNameSaveScriptPath}`, `${srcPicturePath}`,`${pictureName}` , `${destCroppedPicturesPath}`], {//TODO: comments inside image_crop_name_save.py
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
-    const isCropped = newCroppedMessage.file_name != undefined ? true:false
+    const isCropped = currMsg.file_name != undefined ? true:false
     if(!isCropped){
-      throw new Error(newCroppedMessage.error)
+      throw new Error(currMsg.error)
     }
     logger.verbose(`photo name ${pictureName} has been cropped `)
     
       const threshold = 10;
-      newCroppedMessage = oldCropMessage === undefined ? newCroppedMessage:compareHashes(oldCropMessage,newCroppedMessage,threshold);
+      currMsg = prevMsg === undefined ? currMsg:compareHashes(prevMsg,currMsg,threshold);
+      
       //prediction - child process
-      newCroppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py', `${destCroppedPicturesPath}`,JSON.stringify(newCroppedMessage)], {
+      currMsg = await executeChildProcess('python', [`${pytorchModelScriptPath}`, `${destCroppedPicturesPath}`,JSON.stringify(currMsg)], {
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });    
-      const isPredict = newCroppedMessage.file_name != undefined ? true:false;
+      const isPredict = currMsg.file_name != undefined ? true:false;
       if(!isPredict){
-        throw new Error(newCroppedMessage.error)
+        throw new Error(currMsg.error)
       }
       logger.verbose(`photo name ${pictureName} has been predicted`);
       
      
       //deep clone to preserve information of old message
-      const oldClonedCroppedMessage = structuredClone(oldCropMessage)
-      oldCropMessage = structuredClone(newCroppedMessage);
+      const tmpPrevMsg = structuredClone(prevMsg)
+      prevMsg = structuredClone(currMsg);
 
       //prepair data for store
-      const prepairedData = await dataPreparation(newCroppedMessage, oldClonedCroppedMessage);
+      const prepairedData = await dataPreparation(currMsg, tmpPrevMsg);
         
 
     
