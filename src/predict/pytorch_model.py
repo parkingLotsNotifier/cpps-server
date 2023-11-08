@@ -6,10 +6,12 @@ import torch
 from torchvision import transforms
 import torch.nn.functional as F
 
-sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
+sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/') #TODO what its purpose?
 from logger.logger import setup_logger
 
 logger = setup_logger("pytorch_model") 
+model_path="/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/my_NETMODELV3_IMAGENET1K_V1_balanced.pth"
+label_path = "/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/labels.txt"
 
 # Define transforms
 data_transforms = transforms.Compose([
@@ -22,12 +24,12 @@ data_transforms = transforms.Compose([
 device = torch.device("cpu")
 
 #Load model
-model = torch.load("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/my_NETMODELV3_IMAGENET1K_V1_balanced.pth",map_location=torch.device('cpu'))
+model = torch.load(f'{model_path}',map_location=torch.device('cpu'))
 # Move model to CPU
 model = model.to(device)  
 model.eval()
 
-class_names = open("/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/labels.txt", "r").readlines()
+class_names = open(f'{label_path}', "r").readlines()
 
 def predict_occupancy(image_path):
 
