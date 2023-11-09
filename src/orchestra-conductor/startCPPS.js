@@ -6,9 +6,10 @@ const {createLogger} = require('../logger/logger');
 const {dataPreparation} = require('../data-preparation/dataPreparation')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
+const {deleteToPredictAndHashValue} = require('../data-preparation/deleteToPredictAndHashValue')
 const logger = createLogger('startCPPS');
 
-//TODO: check if it is lazy cconstructed
+
 const executeChildProcess = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, options);
@@ -34,14 +35,14 @@ const executeChildProcess = (cmd, args, options) => {
 };
 
 
-let prevMsg;
+let prevMsg; 
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
 const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/image_crop_name_save.py'
 const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 const startCPPS = async () => {
   try {
-     
+    
     //capture
     const pictureName = await capturePhoto(); //TODO: we only looked breafly on capturePhoto
     const isCaptured = pictureName != undefined ? true:false
@@ -83,18 +84,17 @@ const startCPPS = async () => {
       }
       logger.verbose(`photo name ${pictureName} has been predicted`);
       
-     
-      //deep clone to preserve information of old message
-      const tmpPrevMsg = structuredClone(prevMsg)
-      prevMsg = structuredClone(currMsg);
 
       //prepair data for store
-      const prepairedData = await dataPreparation(currMsg, tmpPrevMsg);
-        
-
+      currMsg = await dataPreparation(currMsg, prevMsg);
+      
+      prevMsg = structuredClone(currMsg);
+      
+      currMsg = await deleteToPredictAndHashValue(currMsg);   
+     
     
    //store
-    const isStored = await storeParkingLotsData(prepairedData);
+    const isStored = await storeParkingLotsData(currMsg);
     if(isStored){
       logger.verbose(`predictions has been saved to DB`)
     }
@@ -113,9 +113,10 @@ const startCPPS = async () => {
       
       
     const homeDir = require('os').homedir();
+    
     //remove photos
-    //spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
-    //logger.info(`deleting photos from server`)
+    spawn('rm -f', [`${homeDir}/photos/*.jpg`, `${homeDir}/photos/cropped/*.jpg`], {shell: true});
+    logger.info(`deleting photos from server`)
     logger.info('CPPS has completed the run')
     emitPipelineFinished();
   } catch (error) {
