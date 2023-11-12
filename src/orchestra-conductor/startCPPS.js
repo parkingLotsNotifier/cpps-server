@@ -38,7 +38,7 @@ const executeChildProcess = (cmd, args, options) => {
 let prevMsg; 
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
-const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/image_crop_name_save.py'
+const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/orchestrate.py'
 const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 const startCPPS = async () => {
   try {
