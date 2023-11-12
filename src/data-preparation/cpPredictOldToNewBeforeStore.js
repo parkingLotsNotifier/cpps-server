@@ -1,6 +1,6 @@
 
-//TODO:reconstruct function
-const dataPreparation = (newData, oldData) => {
+
+const cpPredictOldToNewBeforeStore = (newData, oldData) => {
 
     // Extract the parking name
     newData['parking_name'] = "Student residences";
@@ -14,9 +14,7 @@ const dataPreparation = (newData, oldData) => {
         if ( isToPredictExist && slot.toPredict === false ) {
             
             // Copy prediction from oldData to newData
-            if (oldData.slots[index] && oldData.slots[index].prediction) {
-                slot.prediction = oldData.slots[index].prediction;
-            }
+            cpPredictOldToNew(oldData, index, slot);
            
         }
         
@@ -24,8 +22,14 @@ const dataPreparation = (newData, oldData) => {
     return newData
 };
 
-
+function cpPredictOldToNew(oldData, index, slot) {
+    if (oldData.slots[index] && oldData.slots[index].prediction) {
+        slot.prediction = oldData.slots[index].prediction;
+    }
+}
 
 module.exports = {
-    dataPreparation,
+    cpPredictOldToNewBeforeStore,
 };
+
+

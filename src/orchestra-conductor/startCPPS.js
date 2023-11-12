@@ -3,7 +3,7 @@ const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-const {dataPreparation} = require('../data-preparation/dataPreparation')
+const {cpPredictOldToNewBeforeStore} = require('../data-preparation/cpPredictOldToNewBeforeStore')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 const {deleteToPredictAndHashValue} = require('../data-preparation/deleteToPredictAndHashValue')
@@ -86,7 +86,7 @@ const startCPPS = async () => {
       
 
       //prepair data for store
-      currMsg = await dataPreparation(currMsg, prevMsg);
+      currMsg = await cpPredictOldToNewBeforeStore(currMsg, prevMsg);
       
       prevMsg = structuredClone(currMsg);
       
