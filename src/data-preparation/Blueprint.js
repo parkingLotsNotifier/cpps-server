@@ -1,32 +1,32 @@
 const fs = require('fs');
 
 class Blueprint {
-    _blueprintFilePath;
-    _blueprintData;
-    _annotations;
-    _categories;
-    _categoryIdToBbox;
-    _categoryNameToBbox = [];
+    #_blueprintFilePath;
+    #_blueprintData;
+    #_annotations;
+    #_categories;
+    #_categoryIdToBbox;
+    #_categoryNameToBbox = [];
 
     constructor(jsonFilePath) {
-        this._blueprintFilePath = jsonFilePath;
-        this._blueprintData = this.parseBlueprint();
-        this._annotations = this.extractAnnotations();
-        this._categories = this.extractCategories();
-        this._categoryIdToBbox = this.mapCategoryIdToBbox();
+        this.#_blueprintFilePath = jsonFilePath;
+        this.#_blueprintData = this.parseBlueprint();
+        this.#_annotations = this.extractAnnotations();
+        this.#_categories = this.extractCategories();
+        this.#_categoryIdToBbox = this.mapCategoryIdToBbox();
         
         //category_id represent the index the category name in categories 
-        this._categoryNameToBbox=this.mapLotNameToBbox();
+        this.#_categoryNameToBbox=this.mapLotNameToBbox();
     }
 
     parseBlueprint() {
-        let rawData = fs.readFileSync(this._blueprintFilePath);
+        let rawData = fs.readFileSync(this.#_blueprintFilePath);
         return JSON.parse(rawData);
     }
 
     extractAnnotations() {
         try {
-            return this._blueprintData.annotations.map(annotation => ({
+            return this.#_blueprintData.annotations.map(annotation => ({
                 categoryId: annotation.category_id,
                 bbox: annotation.bbox
             }));
@@ -37,7 +37,7 @@ class Blueprint {
 
     extractCategories() {
         try {
-            return this._blueprintData.categories.map(category => ({
+            return this.#_blueprintData.categories.map(category => ({
                 id: category.id,
                 name: category.name
             }));
@@ -48,7 +48,7 @@ class Blueprint {
 
     mapCategoryIdToBbox() {
                                     //(accumulator,currentValue)
-        return this._annotations.reduce((map, annotation) => {
+        return this.#_annotations.reduce((map, annotation) => {
             map[annotation.categoryId] = annotation.bbox;
             return map;
         }, {});
@@ -57,9 +57,9 @@ class Blueprint {
     mapLotNameToBbox() {
         try {
             let result = []
-            this._categories.forEach(category => { 
+            this.#_categories.forEach(category => { 
                 let catName = category.name;
-                let bbox = this._categoryIdToBbox[category.id];
+                let bbox = this.#_categoryIdToBbox[category.id];
                 result.push({ lotName: catName, bbox: bbox });
             });
             return result
@@ -69,7 +69,7 @@ class Blueprint {
     }
 
     get categoryNameToBbox() {
-        return this._categoryNameToBbox;
+        return this.#_categoryNameToBbox;
     }
 }
 
