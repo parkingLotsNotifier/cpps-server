@@ -7,7 +7,7 @@ const {cpPredictOldToNewBeforeStore} = require('../data-preparation/cpPredictOld
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 const {deleteToPredictAndHashValue} = require('../data-preparation/deleteToPredictAndHashValue')
-const Blueprint = require('../data-preparation/Bluprint')
+const Blueprint = require('../data-preparation/Blueprint')
 const logger = createLogger('startCPPS');
 
 
