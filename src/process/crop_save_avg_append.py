@@ -7,21 +7,17 @@ import json
 sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
 from logger.logger import setup_logger
 logger = setup_logger("filenames_crop_save_avg_append")
-blueprint_json_path = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 
 slots = []
-cropped_file_names=[]
+
 avgs=[]
 
-src_path,img_name,dest_path,basic_data = sys.argv[1:5]
+src_path,img_name,dest_path,basic_data,cropped_pic_names = sys.argv[1:6]
 basic_data = json.loads(basic_data)
+cropped_pic_names = json.loads(cropped_pic_names)
 
-def cropped_filenames():
-    for idx,itm in enumerate(basic_data):
-        #names
-        cropped_file_names.append(create_cropped_file_name(img_name,idx) )
-       
 def crop_save_avg():
+
     image = cv2.imread(f'{src_path}/{img_name}.jpg')
 
     for idx,itm in enumerate(basic_data):
@@ -34,7 +30,7 @@ def crop_save_avg():
         roi = crop(image,int_bbox)
     
         # * save cropped image to file
-        filename_with_path = os.path.join(dest_path, f'{cropped_file_names[idx]}')
+        filename_with_path = os.path.join(dest_path, f'{cropped_pic_names[idx]}')
         cv2.imwrite(filename_with_path, roi) 
     
         # * prepare the data for the next phase in cpps
@@ -44,11 +40,10 @@ def crop_save_avg():
 def append_slots():
         for idx,itm in enumerate(basic_data):
             #create slot
-            slots.append(create_slot(cropped_file_names[idx],itm['bbox'],itm['lotName'],avgs[idx]))
+            slots.append(create_slot(cropped_pic_names[idx],itm['bbox'],itm['lotName'],avgs[idx]))
         
 try:
 
-    cropped_filenames()
     crop_save_avg()
     append_slots()
                   

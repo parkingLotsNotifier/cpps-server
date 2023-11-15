@@ -7,6 +7,7 @@ const {cpPredictOldToNewBeforeStore} = require('../data-preparation/cpPredictOld
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 const {deleteToPredictAndHashValue} = require('../data-preparation/deleteToPredictAndHashValue')
+const {generateCroppedPicNames} = require('../data-preparation/croppedFileNames')
 const Blueprint = require('../data-preparation/Blueprint')
 const logger = createLogger('startCPPS');
 
@@ -35,12 +36,12 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
-
+let croppedPicNames;
 let prevMsg; 
 const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
-const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/filenames_crop_save_avg_append.py'
+const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_save_avg_append.py'
 const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 
 //load Blueprint and extract the basic data
@@ -67,9 +68,10 @@ const startCPPS = async () => {
       logger.verbose(`photo name ${pictureName} has been rotated `)
     }
 
-
+    //generate cropped file names
+    croppedPicNames = generateCroppedPicNames(pictureName,lstOfDictLotNameBbox.length)
     //croped - child process
-    let currMsg = await executeChildProcess('python', [`${pyImageCropNameSaveScriptPath}`, `${srcPicturePath}`,`${pictureName}` , `${destCroppedPicturesPath}`,JSON.stringify(lstOfDictLotNameBbox)], {//TODO: comments inside image_crop_name_save.py
+    let currMsg = await executeChildProcess('python', [`${pyImageCropNameSaveScriptPath}`, `${srcPicturePath}`,`${pictureName}` , `${destCroppedPicturesPath}`,JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames)], {//TODO: comments inside image_crop_name_save.py
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     const isCropped = currMsg.file_name != undefined ? true:false
