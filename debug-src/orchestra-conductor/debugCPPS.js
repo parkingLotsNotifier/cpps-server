@@ -1,6 +1,8 @@
 const { spawn } = require('child_process');
 const {createLogger} = require('../../src/logger/logger');
-const {dataPreparation} = require('../../src/data-preparation/dataPreparation')
+//const {dataPreparation} = require('../../src/data-preparation/dataPreparation')
+const {generateCroppedPicNames} = require('../../src/data-preparation/croppedFileNames')
+const Blueprint = require('../../src/data-preparation/Blueprint')
 const fs = require('fs');
 const util = require('util');
 
@@ -32,6 +34,11 @@ const executeChildProcess = (cmd, args, options) => {
 };
 
 let oldMessage;
+const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
+
+//load Blueprint and extract the basic data
+const blueprint = new Blueprint(jsonFilePath);
+const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 const debugCPPS = async () => {
   try {
 
@@ -46,8 +53,11 @@ const debugCPPS = async () => {
     
     fileNames.forEach(async (pictureName) => {
     
+      //generate cropped file names
+    croppedPicNames = generateCroppedPicNames(pictureName,lstOfDictLotNameBbox.length)
+   
     //croped - child process
-    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop.py',`${srcPictureName}`, `${pictureName.slice(0,-4)}`,`${destCropped}`], {
+    const croppedMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_save_avg_append.py',`${srcPictureName}`, `${pictureName.slice(0,-4)}`,`${destCropped}`,JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     const isCropped = croppedMessage.file_name != undefined ? true:false
@@ -82,7 +92,7 @@ const debugCPPS = async () => {
         
    
    //prepair data 
-   console.log( util.inspect( await dataPreparation(pytorchMessage,oldMessage),{ depth: null }));
+   console.log( util.inspect( pytorchMessage,{ depth: null }));
    
    
   });
