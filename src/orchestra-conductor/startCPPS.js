@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+const { spawn ,spawnSync} = require('child_process');
 const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
@@ -41,7 +41,10 @@ let prevMsg;
 const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
-const pyImageCropNameSaveScriptPath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_save_avg_append.py'
+const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
+const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
+const pyCompAvgsIntens = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/compute_avarage_intensities.py'
+const pyCreateSlots = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/create_slots.py'
 const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 
 //load Blueprint and extract the basic data
@@ -70,10 +73,29 @@ const startCPPS = async () => {
 
     //generate cropped file names
     croppedPicNames = generateCroppedPicNames(pictureName,lstOfDictLotNameBbox.length)
-    //croped - child process
-    let currMsg = await executeChildProcess('python', [`${pyImageCropNameSaveScriptPath}`, `${srcPicturePath}`,`${pictureName}` , `${destCroppedPicturesPath}`,JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames)], {//TODO: comments inside image_crop_name_save.py
-      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-    });
+    
+    //crop
+    let rois = spawnSync('python',[pyCropPics , srcPicturePath, pictureName ,JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames)], { encoding : 'utf8' })
+   
+    //save
+    spawnSync('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames) ],{
+      input : rois.stdout,
+      encoding: 'utf-8'
+    })
+    
+    //compute avarage intensity
+    let avgs = spawnSync('python',[pyCompAvgsIntens],{
+      input : rois.stdout,
+      encoding: 'utf-8'
+    }
+    );
+    
+    //create slots 
+    let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,avgs.stdout], {
+           stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+         });//TODO: implement in js
+   
+ 
     const isCropped = currMsg.file_name != undefined ? true:false
     if(!isCropped){
       throw new Error(currMsg.error)
@@ -84,7 +106,7 @@ const startCPPS = async () => {
       currMsg = prevMsg === undefined ? currMsg:compareHashes(prevMsg,currMsg,threshold);
       
       //prediction - child process
-      currMsg = await executeChildProcess('python', [`${pytorchModelScriptPath}`, `${destCroppedPicturesPath}`,JSON.stringify(currMsg)], {
+      currMsg = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });    
       const isPredict = currMsg.file_name != undefined ? true:false;
