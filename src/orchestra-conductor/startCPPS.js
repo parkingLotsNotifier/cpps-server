@@ -12,6 +12,7 @@ const net = require('net');
 const path = require('path');
 const Blueprint = require('../data-preparation/Blueprint')
 const logger = createLogger('startCPPS');
+const fs = require('fs')
 
 
 
@@ -28,9 +29,11 @@ const executeChildProcess = (cmd, args, options) => {
     child.on('close', (code) => {
       if (code !== 0) {
         reject(new Error(`${cmd} failed with code ${code}`));
-      } else if (!messageData) {
-        reject(new Error(`No message received from child ${cmd} ${args} process`));
       }
+      else{
+        resolve(code.toString())
+      }
+    
     });
 
     child.stderr.on('data', (data) => {
@@ -39,64 +42,14 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
-const executeChildProcessUnixSocket = (cmd, args, dataToSend, socketPath) => {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    
-    server.listen(socketPath, async () => {
-      const child =  spawn(cmd, args.concat(socketPath), { stdio: ['ignore', 'ignore', 'pipe'] });
-      child.on('error', (err)=>{
-        reject(err);
-        server.close();
-      });
-      child.on('close',()=>{
-        server.close();
-      })
-      child.stderr.on('data', (data) => {
-        logger.error(`Error from child process: ${data.toString()}`);
-      });
-    });
-
-    server.on('connection', (socket) => {
-      
-      // Send data immediately upon connection
-      if(dataToSend != null){  
-        const sendData = dataToSend.toString();
-        socket.write(sendData);
-      }
-
-      let dataBuffer = '';
-      socket.on('data', (chunk) => {
-        dataBuffer += chunk.toString();
-      });
-       
-     
-
-      socket.on('end', () => {
-        resolve(dataBuffer);
-        server.close();
-      });
-
-      
-
-      socket.on('error', (err) => {
-        reject(err);
-        server.close();
-      });
-    });
-
-    server.on('error', (err) => {
-      reject(err);
-    });
-
-    
-  });
-};
-
 
 
 let croppedPicNames;
-let prevMsg; 
+let prevMsg;
+let isRois;
+let rois;
+let isAvgs;
+let avgs; 
 const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
@@ -112,7 +65,97 @@ const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 
 //create an adress to unix domain ipc
 const socketPath = path.join(__dirname, 'startCPPS.sock');
+// Remove the socket file if it already exists
+if (fs.existsSync(socketPath)) {
+  fs.unlinkSync(socketPath);
+}
+try{// Create the server
+  const server = net.createServer((client) => {
+    console.log('Client connected.');
+    let message='';
+    client.on('data', (data) => {
+        console.log(data.length)
+        message += data.toString();
+        if(message === 'get rois' ){
+          const chunkSize = 4096; // 4096 bytes per chunk
+          const dataChunks = [];
+          for (let i = 0; i < rois.length; i += chunkSize) {
+              dataChunks.push(rois.substring(i, i + chunkSize));
+          }
+          sendDataInChunks(client, dataChunks,rois.length);
+          console.log('end')
+      
+        }
+        else if(message === 'get avgs'){
+          const chunkSize = 4096; // 4096 bytes per chunk
+          const dataChunks = [];
+          for (let i = 0; i < avgs.length; i += chunkSize) {
+              dataChunks.push(avgs.substring(i, i + chunkSize));
+          }
+          sendDataInChunks(client, dataChunks,avgs.length);
+          client.end();
+        }
+        
+    });
 
+    client.on('end', () => {
+        console.log('Client disconnected.');
+        message = message.split('\n');
+        if(message[0] === 'post rois' ){
+          rois = message[1];
+          console.log(rois.length)
+          
+        }
+        else if(message[0] === 'post avgs'){
+          avgs = message[1];  
+          console.log(avgs.length)    
+        }
+
+        
+
+    });
+
+   
+
+  });
+
+  function sendDataInChunks(socket, dataChunks ,maxLength) {
+    let i = 0;
+
+    function writeChunk() {
+        let ok = true;
+        while (i < dataChunks.length && ok) {
+            if (i === dataChunks.length - 1) {
+                socket.write(dataChunks[i]);
+            } else {
+                ok = socket.write(dataChunks[i]);
+            }
+            i++;
+        }
+        if (i < dataChunks.length) {
+            socket.once('drain', writeChunk);
+            console.log('drain chunk')
+        }
+        if(i*4096 >= maxLength){
+          socket.end()
+        }
+    }
+    writeChunk();
+    
+}
+
+server.listen(socketPath, () => {
+  console.log(`Server listening on ${socketPath}`);
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+});
+
+}
+catch (error) {
+  logger.error(`Error in startCPPS: ${error.message}`);
+}
 const startCPPS = async () => {
   try {
     
@@ -138,21 +181,27 @@ const startCPPS = async () => {
     
 
     //crop
-    let rois = await executeChildProcessUnixSocket('python',[pyCropPics , srcPicturePath, pictureName ,JSON.stringify(lstOfDictLotNameBbox)],null,socketPath);
+  await executeChildProcess('python',[pyCropPics , srcPicturePath, pictureName ,JSON.stringify(lstOfDictLotNameBbox),socketPath],{
+    stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+  });
     
-    //save
-    await executeChildProcessUnixSocket('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames)],rois,socketPath);
+ await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
+  stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+});
+  
+  
+  await executeChildProcess('python',[pyCompAvgsIntens,socketPath],{
+    stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+  });
     
-    //compute avarage intensity
-    let avgs = await executeChildProcessUnixSocket('python',[pyCompAvgsIntens],rois,socketPath);
     
-    
-    //create slots 
-    let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,avgs], {
-           stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-         });//TODO: implement in js
-   
- 
+
+      //create slots 
+    let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,JSON.stringify(avgs)], {
+          stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+        });//TODO: implement in js
+  
+
     const isCropped = currMsg.file_name != undefined ? true:false
     if(!isCropped){
       throw new Error(currMsg.error)
@@ -174,15 +223,15 @@ const startCPPS = async () => {
       
 
       //prepair data for store
-      currMsg = await cpPredictOldToNewBeforeStore(currMsg, prevMsg);
+      currMsg =  cpPredictOldToNewBeforeStore(currMsg, prevMsg);
       
       prevMsg = structuredClone(currMsg);
       
-      currMsg = await deleteToPredictAndHashValue(currMsg);   
-     
+      currMsg =  deleteToPredictAndHashValue(currMsg);   
     
-   //store
-    const isStored = await storeParkingLotsData(currMsg);
+    
+  //store
+    const isStored =  storeParkingLotsData(currMsg);
     if(isStored){
       logger.verbose(`predictions has been saved to DB`)
     }

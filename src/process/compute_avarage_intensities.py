@@ -10,19 +10,33 @@ sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-se
 from logger.logger import setup_logger
 logger = setup_logger("compute_avarage_intensities")
 
-def client_connect(socket_path):
-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) 
-    client.connect(socket_path)
-    return client
 
-def get_data_from_unix_socket(client):
-    response = client.recv(500000)  # Adjust buffer size as needed
+
+def get_data_from_unix_socket():
+    response = b''
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) 
+    server.connect(socket_path)
+    server.sendall(b'get rois')
+    logger.info('23')
+    while True:
+        chunk = server.recv(4096)  # Receive data in chunks of 4096 bytes
+        if not chunk:
+            break
+        response += chunk
+        logger.info('blabla')
+
+    server.close()
+    logger.info(len(response))
     return json.dumps(response.decode())
 
-def post_data_to_unix_socket(client,data):
+def post_data_to_unix_socket(data):
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) 
+    client.connect(socket_path)
+    client.sendall(b'post avgs\n')
     jsonData = json.dumps(data).encode()
     client.sendall(jsonData)  # Send all data
-    
+    client.close()
+
 def compute_average_intensity(roi):
     # Calculate the average value
     avg = roi.mean()
@@ -31,9 +45,10 @@ def compute_average_intensity(roi):
 # Read the large data (rois) from stdin
 
 socket_path = sys.argv[1]
-client = client_connect(socket_path)
 
-rois_base64=get_data_from_unix_socket(client)
+logger.info('39')
+rois_base64=get_data_from_unix_socket()
+logger.info('41')
 rois_base64=rois_base64.strip('][').split(', ')
 avgs = []
 
@@ -46,7 +61,7 @@ try:
         avgs.append(compute_average_intensity(roi))
     
     logger.info('49')
-    post_data_to_unix_socket(client,avgs)
+    post_data_to_unix_socket(avgs)
     
     sys.exit(0)        
 

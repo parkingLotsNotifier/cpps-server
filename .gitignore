@@ -21,3 +21,4 @@ src/data-preparation/Coordinate.js
 src/data-preparation/Message.js
 src/data-preparation/Slot.js
 .vscode/launch.json
+src/data-preparation/Document.js
