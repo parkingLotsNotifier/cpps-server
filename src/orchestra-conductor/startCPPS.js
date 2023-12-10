@@ -14,6 +14,18 @@ const Blueprint = require('../data-preparation/Blueprint')
 const logger = createLogger('startCPPS');
 const fs = require('fs')
 
+let croppedPicNames;
+let prevMsg;
+let rois;
+let avgs; 
+const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
+const srcPicturePath = '/data/data/com.termux/files/home/photos';
+const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
+const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
+const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
+const pyCompAvgsIntens = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/compute_avarage_intensities.py'
+const pyCreateSlots = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/create_slots.py'
+const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 
 
 const executeChildProcess = (cmd, args, options) => {
@@ -42,27 +54,6 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
-
-
-let croppedPicNames;
-let prevMsg;
-let isRois;
-let rois;
-let isAvgs;
-let avgs; 
-const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
-const srcPicturePath = '/data/data/com.termux/files/home/photos';
-const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
-const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
-const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
-const pyCompAvgsIntens = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/compute_avarage_intensities.py'
-const pyCreateSlots = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/create_slots.py'
-const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
-
-//load Blueprint and extract the basic data
-const blueprint = new Blueprint(jsonFilePath);
-const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
-
 //create an adress to unix domain ipc
 const socketPath = path.join(__dirname, 'startCPPS.sock');
 // Remove the socket file if it already exists
@@ -71,10 +62,10 @@ if (fs.existsSync(socketPath)) {
 }
 try{// Create the server
   const server = net.createServer((client) => {
-    console.log('Client connected.');
+    logger.verbose('Client connected.');
     let message='';
     client.on('data', (data) => {
-        console.log(data.length)
+        logger.verbose(data.length);
         message += data.toString();
         if(message === 'get rois' ){
           const chunkSize = 4096; // 4096 bytes per chunk
@@ -83,7 +74,7 @@ try{// Create the server
               dataChunks.push(rois.substring(i, i + chunkSize));
           }
           sendDataInChunks(client, dataChunks,rois.length);
-          console.log('end')
+          logger.verbose('end');
       
         }
         else if(message === 'get avgs'){
@@ -99,16 +90,16 @@ try{// Create the server
     });
 
     client.on('end', () => {
-        console.log('Client disconnected.');
+        logger.verbose('Client disconnected.');
         message = message.split('\n');
         if(message[0] === 'post rois' ){
           rois = message[1];
-          console.log(rois.length)
+          logger.verbose(rois.length);
           
         }
         else if(message[0] === 'post avgs'){
           avgs = message[1];  
-          console.log(avgs.length)    
+          logger.verbose(avgs.length);    
         }
 
         
@@ -134,7 +125,7 @@ try{// Create the server
         }
         if (i < dataChunks.length) {
             socket.once('drain', writeChunk);
-            console.log('drain chunk')
+            logger.verbose('drain chunk');
         }
         if(i*4096 >= maxLength){
           socket.end()
@@ -145,7 +136,7 @@ try{// Create the server
 }
 
 server.listen(socketPath, () => {
-  console.log(`Server listening on ${socketPath}`);
+  logger.verbose(`Server listening on ${socketPath}`);
 });
 
 server.on('error', (err) => {
@@ -156,6 +147,18 @@ server.on('error', (err) => {
 catch (error) {
   logger.error(`Error in startCPPS: ${error.message}`);
 }
+
+
+
+
+
+
+//load Blueprint and extract the basic data
+const blueprint = new Blueprint(jsonFilePath);
+const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
+
+
+
 const startCPPS = async () => {
   try {
     
@@ -196,7 +199,7 @@ const startCPPS = async () => {
     
     
 
-      //create slots 
+    //create slots 
     let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,JSON.stringify(avgs)], {
           stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
         });//TODO: implement in js
