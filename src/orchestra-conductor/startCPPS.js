@@ -8,16 +8,14 @@ const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareHashes} = require('../process/compare-hashes')
 const {deleteToPredictAndHashValue} = require('../data-preparation/deleteToPredictAndHashValue')
 const {generateCroppedPicNames} = require('../data-preparation/croppedFileNames')
-const net = require('net');
 const path = require('path');
 const Blueprint = require('../data-preparation/Blueprint')
-const logger = createLogger('startCPPS');
 const fs = require('fs')
+const {getRois,getAvgs,setRois,setAvgs,createSocketServer} = require('../socket-server/unixDomainSocketServer');
 
+const logger = createLogger('startCPPS');
 let croppedPicNames;
 let prevMsg;
-let rois;
-let avgs; 
 const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 const srcPicturePath = '/data/data/com.termux/files/home/photos';
 const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped';
@@ -56,102 +54,14 @@ const executeChildProcess = (cmd, args, options) => {
 
 //create an adress to unix domain ipc
 const socketPath = path.join(__dirname, 'startCPPS.sock');
+
 // Remove the socket file if it already exists
 if (fs.existsSync(socketPath)) {
   fs.unlinkSync(socketPath);
 }
-try{// Create the server
-  const server = net.createServer((client) => {
-    logger.verbose('Client connected.');
-    let message='';
-    client.on('data', (data) => {
-        logger.verbose(data.length);
-        message += data.toString();
-        if(message === 'get rois' ){
-          const chunkSize = 4096; // 4096 bytes per chunk
-          const dataChunks = [];
-          for (let i = 0; i < rois.length; i += chunkSize) {
-              dataChunks.push(rois.substring(i, i + chunkSize));
-          }
-          sendDataInChunks(client, dataChunks,rois.length);
-          logger.verbose('end');
-      
-        }
-        else if(message === 'get avgs'){
-          const chunkSize = 4096; // 4096 bytes per chunk
-          const dataChunks = [];
-          for (let i = 0; i < avgs.length; i += chunkSize) {
-              dataChunks.push(avgs.substring(i, i + chunkSize));
-          }
-          sendDataInChunks(client, dataChunks,avgs.length);
-          client.end();
-        }
-        
-    });
 
-    client.on('end', () => {
-        logger.verbose('Client disconnected.');
-        message = message.split('\n');
-        if(message[0] === 'post rois' ){
-          rois = message[1];
-          logger.verbose(rois.length);
-          
-        }
-        else if(message[0] === 'post avgs'){
-          avgs = message[1];  
-          logger.verbose(avgs.length);    
-        }
-
-        
-
-    });
-
-   
-
-  });
-
-  function sendDataInChunks(socket, dataChunks ,maxLength) {
-    let i = 0;
-
-    function writeChunk() {
-        let ok = true;
-        while (i < dataChunks.length && ok) {
-            if (i === dataChunks.length - 1) {
-                socket.write(dataChunks[i]);
-            } else {
-                ok = socket.write(dataChunks[i]);
-            }
-            i++;
-        }
-        if (i < dataChunks.length) {
-            socket.once('drain', writeChunk);
-            logger.verbose('drain chunk');
-        }
-        if(i*4096 >= maxLength){
-          socket.end()
-        }
-    }
-    writeChunk();
-    
-}
-
-server.listen(socketPath, () => {
-  logger.verbose(`Server listening on ${socketPath}`);
-});
-
-server.on('error', (err) => {
-  console.error('Server error:', err);
-});
-
-}
-catch (error) {
-  logger.error(`Error in startCPPS: ${error.message}`);
-}
-
-
-
-
-
+// Initialize and start the socket server
+createSocketServer(socketPath);
 
 //load Blueprint and extract the basic data
 const blueprint = new Blueprint(jsonFilePath);
@@ -197,10 +107,10 @@ const startCPPS = async () => {
     stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
   });
     
-    
+ 
 
     //create slots 
-    let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,JSON.stringify(avgs)], {
+    let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,JSON.stringify(getAvgs())], {
           stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
         });//TODO: implement in js
   
