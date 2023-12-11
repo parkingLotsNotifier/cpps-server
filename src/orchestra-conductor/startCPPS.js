@@ -12,6 +12,9 @@ const path = require('path');
 const Blueprint = require('../data-preparation/Blueprint')
 const fs = require('fs')
 const {getRois,getAvgs,setRois,setAvgs,createSocketServer} = require('../socket-server/unixDomainSocketServer');
+const Document = require('../data-preparation/Document');
+const Coordinate = require('../data-preparation/Coordinate');
+const Slot = require('../data-preparation/Slot');
 
 const logger = createLogger('startCPPS');
 let croppedPicNames;
@@ -22,10 +25,19 @@ const destCroppedPicturesPath= '/data/data/com.termux/files/home/photos/cropped'
 const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
 const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
 const pyCompAvgsIntens = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/compute_avarage_intensities.py'
-const pyCreateSlots = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/create_slots.py'
 const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 
-
+function reviver(key, value) {
+  // Assuming that if it's a string and starts with '{', it might be a JSON string.
+  if (typeof value === "string" && value.startsWith('{')) {
+      try {
+          return JSON.parse(value,reviver);
+      } catch (e) {
+          return value; // If parsing failed, return the original value
+      }
+  }
+  return value; // Return the value unchanged if it's not a string or doesn't look like JSON
+}
 const executeChildProcess = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, options);
@@ -72,12 +84,14 @@ const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 const startCPPS = async () => {
   try {
     
+    
     //capture
     const pictureName = await capturePhoto(); 
     const isCaptured = pictureName != undefined ? true:false
     if(isCaptured){
       logger.verbose(`photo name ${pictureName} has been captured `)
     }
+    
     
     /**
     * process services 
@@ -94,54 +108,58 @@ const startCPPS = async () => {
     
 
     //crop
-  await executeChildProcess('python',[pyCropPics , srcPicturePath, pictureName ,JSON.stringify(lstOfDictLotNameBbox),socketPath],{
-    stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-  });
+    await executeChildProcess('python',[pyCropPics , srcPicturePath, pictureName ,JSON.stringify(lstOfDictLotNameBbox),socketPath],{
+      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+    });
     
- await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
-  stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-});
-  
-  
-  await executeChildProcess('python',[pyCompAvgsIntens,socketPath],{
-    stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-  });
+    //save
+    await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
+      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+    });
     
- 
+    //predict
+    await executeChildProcess('python',[pyCompAvgsIntens,socketPath],{
+      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+    });
+    
+    //this replace the create slots
+    let doc = new Document(pictureName);
+    let rois = JSON.parse(getRois());
+    let avgs = JSON.parse(getAvgs());
+    for( let i=0;i<croppedPicNames.length;i++){
+      let coordinate = new Coordinate(...lstOfDictLotNameBbox[i].bbox);
+      doc.addSlot(new Slot(lstOfDictLotNameBbox[i].lotName,coordinate,croppedPicNames[i],rois[i],avgs[i]));
+    }
 
-    //create slots 
-    let currMsg = await executeChildProcess('python', [pyCreateSlots, pictureName , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,JSON.stringify(getAvgs())], {
-          stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-        });//TODO: implement in js
-  
-
+    let currMsg = JSON.parse(doc.toString(),reviver);
+    
     const isCropped = currMsg.file_name != undefined ? true:false
     if(!isCropped){
       throw new Error(currMsg.error)
     }
     logger.verbose(`photo name ${pictureName} has been cropped `)
+  
+    const threshold = 10;
+    currMsg = prevMsg === undefined ? currMsg:compareHashes(prevMsg,currMsg,threshold);
     
-      const threshold = 10;
-      currMsg = prevMsg === undefined ? currMsg:compareHashes(prevMsg,currMsg,threshold);
-      
-      //prediction - child process
-      currMsg = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
-        stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-      });    
-      const isPredict = currMsg.file_name != undefined ? true:false;
-      if(!isPredict){
-        throw new Error(currMsg.error)
-      }
-      logger.verbose(`photo name ${pictureName} has been predicted`);
-      
+    //prediction - child process
+    currMsg = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
+      stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+    });    
+    const isPredict = currMsg.file_name != undefined ? true:false;
+    if(!isPredict){
+      throw new Error(currMsg.error)
+    }
+    logger.verbose(`photo name ${pictureName} has been predicted`);
+    
 
-      //prepair data for store
-      currMsg =  cpPredictOldToNewBeforeStore(currMsg, prevMsg);
-      
-      prevMsg = structuredClone(currMsg);
-      
-      currMsg =  deleteToPredictAndHashValue(currMsg);   
+    //prepair data for store
+    currMsg =  cpPredictOldToNewBeforeStore(currMsg, prevMsg);
     
+    prevMsg = structuredClone(currMsg);
+    
+    currMsg =  deleteToPredictAndHashValue(currMsg);   
+  
     
   //store
     const isStored =  storeParkingLotsData(currMsg);

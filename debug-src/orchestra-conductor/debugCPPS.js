@@ -6,9 +6,23 @@ const fs = require('fs');
 const util = require('util');
 const net = require('net');
 const path = require('path');
-
+const {getRois,getAvgs,setRois,setAvgs,createSocketServer} = require('../../src/socket-server/unixDomainSocketServer');
+const Document = require('../../src/data-preparation/Document');
+const Coordinate = require('../../src/data-preparation/Coordinate');
+const Slot = require('../../src/data-preparation/Slot');
 const logger = createLogger('debugCPPS');
 
+function reviver(key, value) {
+  // Assuming that if it's a string and starts with '{', it might be a JSON string.
+  if (typeof value === "string" && value.startsWith('{')) {
+      try {
+          return JSON.parse(value,reviver);
+      } catch (e) {
+          return value; // If parsing failed, return the original value
+      }
+  }
+  return value; // Return the value unchanged if it's not a string or doesn't look like JSON
+}
 const executeChildProcess = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, options);
@@ -22,9 +36,11 @@ const executeChildProcess = (cmd, args, options) => {
     child.on('close', (code) => {
       if (code !== 0) {
         reject(new Error(`${cmd} failed with code ${code}`));
-      } else if (!messageData) {
-        reject(new Error(`No message received from child ${cmd} ${args} process`));
       }
+      else{
+        resolve(code.toString())
+      }
+    
     });
 
     child.stderr.on('data', (data) => {
@@ -33,60 +49,16 @@ const executeChildProcess = (cmd, args, options) => {
   });
 };
 
-const executeChildProcessUnixSocket = (cmd, args, dataToSend, socketPath) => {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    
-    server.listen(socketPath, async () => {
-      const child =  spawn(cmd, args.concat(socketPath), { stdio: ['ignore', 'ignore', 'pipe'] });
-      child.on('error', (err)=>{
-        reject(err);
-        server.close();
-      });
-      child.on('close',()=>{
-        server.close();
-      })
-      child.stderr.on('data', (data) => {
-        logger.error(`Error from child process: ${data.toString()}`);
-      });
-    });
+//create an adress to unix domain ipc
+const socketPath = path.join(__dirname, 'debugCPPS');
 
-    server.on('connection', (socket) => {
-      
-      // Send data immediately upon connection
-      if(dataToSend != null){  
-        const sendData = dataToSend.toString();
-        socket.write(sendData);
-      }
+// Remove the socket file if it already exists
+if (fs.existsSync(socketPath)) {
+  fs.unlinkSync(socketPath);
+}
 
-      let dataBuffer = '';
-      socket.on('data', (chunk) => {
-        dataBuffer += chunk.toString();
-      });
-       
-     
-
-      socket.on('end', () => {
-        resolve(dataBuffer);
-        server.close();
-      });
-
-      
-
-      socket.on('error', (err) => {
-        reject(err);
-        server.close();
-      });
-    });
-
-    server.on('error', (err) => {
-      reject(err);
-      server.close();
-    });
-
-    
-  });
-};
+// Initialize and start the socket server
+createSocketServer(socketPath);
 
 
 
@@ -95,13 +67,14 @@ const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpp
 const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
 const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
 const pyCompAvgsIntens = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/compute_avarage_intensities.py'
-const pyCreateSlots = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/create_slots.py'
+const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
+
 
 //load Blueprint and extract the basic data
 const blueprint = new Blueprint(jsonFilePath);
 const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 
-const socketPath = path.join(__dirname, 'deb.sock');
+
 
 const debugCPPS = async () => {
   try {
@@ -121,20 +94,30 @@ const debugCPPS = async () => {
     croppedPicNames = generateCroppedPicNames(pictureName.slice(0,-4),lstOfDictLotNameBbox.length)
     console.log(croppedPicNames)
     
-    //crop
-    let rois = await executeChildProcessUnixSocket('python',[pyCropPics , srcPicturePath, pictureName.slice(0,-4) ,JSON.stringify(lstOfDictLotNameBbox)],null,socketPath);
-    
-    //save
-    await executeChildProcessUnixSocket('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames)],rois,socketPath);
-   
-    //compute avarage intensity
-    let avgs = await executeChildProcessUnixSocket('python',[pyCompAvgsIntens],rois,socketPath);
-
-    
-    //create slots 
-    let croppedMessage = await executeChildProcess('python', [pyCreateSlots, pictureName.slice(0,-4) , JSON.stringify(lstOfDictLotNameBbox),JSON.stringify(croppedPicNames) ,avgs], {
-           stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-         });//TODO: implement in js
+      //crop
+      await executeChildProcess('python',[pyCropPics , srcPicturePath, pictureName.slice(0,-4) ,JSON.stringify(lstOfDictLotNameBbox),socketPath],{
+        stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+      });
+      
+      //save
+      await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
+        stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+      });
+      
+      //compute avarage intensity
+      await executeChildProcess('python',[pyCompAvgsIntens,socketPath],{
+        stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
+      });
+        
+      let doc = new Document(pictureName);
+      let rois = JSON.parse(getRois());
+      let avgs = JSON.parse(getAvgs());
+      for( let i=0;i<croppedPicNames.length;i++){
+        let coordinate = new Coordinate(...lstOfDictLotNameBbox[i].bbox);
+        doc.addSlot(new Slot(lstOfDictLotNameBbox[i].lotName,coordinate,croppedPicNames[i],rois[i],avgs[i]));
+      }
+  
+      let croppedMessage = JSON.parse(doc.toString(),reviver);
    
     const isCropped = croppedMessage.file_name != undefined ? true:false
     if(!isCropped){
@@ -144,9 +127,9 @@ const debugCPPS = async () => {
     
 
     //prediction - child process
-    const pytorchMessage = await executeChildProcess('python', ['/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py',  `${destCroppedPicturesPath}`,JSON.stringify(croppedMessage)], {
+    const pytorchMessage =  await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(croppedMessage)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-    });  
+    });    
     
     const isPredict = pytorchMessage.slots[0].prediction != undefined ? true:false;
     if(!isPredict){
@@ -167,7 +150,7 @@ const debugCPPS = async () => {
     });
         
    
-   //prepair data 
+   
    console.log( util.inspect( pytorchMessage,{ depth: null }));
    
    
