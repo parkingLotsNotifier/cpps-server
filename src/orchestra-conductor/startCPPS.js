@@ -5,8 +5,8 @@ const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
 const {cpPredictOldToNewBeforeStore} = require('../data-preparation/cpPredictOldToNewBeforeStore')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
-const {compareHashes} = require('../process/compare-hashes')
-const {deleteToPredictAndHashValue} = require('../data-preparation/deleteToPredictAndHashValue')
+const {compareAverageIntensity} = require('../process/compareAverageIntensity')
+const {deleteToPredictAndAverageIntensity} = require('../data-preparation/deleteToPredictAndAverageIntensity')
 const {generateCroppedPicNames} = require('../data-preparation/croppedFileNames')
 const path = require('path');
 const Blueprint = require('../data-preparation/Blueprint')
@@ -117,7 +117,7 @@ const startCPPS = async () => {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     
-    //predict
+    //compute avarage intensity
     await executeChildProcess('python',[pyCompAvgsIntens,socketPath],{
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
@@ -133,20 +133,20 @@ const startCPPS = async () => {
 
     let currMsg = JSON.parse(doc.toString(),reviver);
     
-    const isCropped = currMsg.file_name != undefined ? true:false
+    const isCropped = currMsg.fileName != undefined ? true:false
     if(!isCropped){
       throw new Error(currMsg.error)
     }
     logger.verbose(`photo name ${pictureName} has been cropped `)
   
     const threshold = 10;
-    currMsg = prevMsg === undefined ? currMsg:compareHashes(prevMsg,currMsg,threshold);
+    currMsg = prevMsg === undefined ? currMsg:compareAverageIntensity(prevMsg,currMsg,threshold);
     
     //prediction - child process
     currMsg = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });    
-    const isPredict = currMsg.file_name != undefined ? true:false;
+    const isPredict = currMsg.fileName != undefined ? true:false;
     if(!isPredict){
       throw new Error(currMsg.error)
     }
@@ -158,7 +158,7 @@ const startCPPS = async () => {
     
     prevMsg = structuredClone(currMsg);
     
-    currMsg =  deleteToPredictAndHashValue(currMsg);   
+    currMsg =  deleteToPredictAndAverageIntensity(currMsg);   
   
     
   //store

@@ -20,12 +20,12 @@ class Slot {
 
     toString() {
         const obj = {
-            lot_name: this.#_lotName,
+            lotName: this.#_lotName,
             coordinate: this.#_coordinate.toString(),
-            filename: this.#_croppedFilename,
+            fileName: this.#_croppedFilename,
             //roi: this.#_roi,
             //prediction: this.#_prediction,
-            hash_value: this.#_averageIntensity,
+            averageIntensity: this.#_averageIntensity,
             //toPredict: this.#_toPredict
         }
         

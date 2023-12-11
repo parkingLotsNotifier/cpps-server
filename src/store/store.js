@@ -10,9 +10,9 @@ const storeParkingLotsData = async (parkingData) => {
   try {
     // Create a new document
     const parkingLot = new ParkingLots({
-      file_name: parkingData.file_name,
+      fileName: parkingData.fileName,
       slots: parkingData.slots,
-      parking_name: parkingData.parking_name
+      parkingName: parkingData.parkingName
     });
 
     // Save the document to the database

@@ -1,4 +1,4 @@
-function compareHashes(oldMessage, newMessage,threshold) {
+function compareAverageIntensity(oldMessage, newMessage,threshold) {
     
     if (!oldMessage || !newMessage || !Array.isArray(oldMessage.slots) || !Array.isArray(newMessage.slots)) {
         throw new Error('Invalid messages provided.');
@@ -15,8 +15,8 @@ function compareHashes(oldMessage, newMessage,threshold) {
         const newSlot = newMessage.slots[i];
         
         // Compare hash values and set the toPredict flag
-        //console.log(oldSlot.hash_value - newSlot.hash_value);
-        newSlot.toPredict = Math.abs(oldSlot.hash_value - newSlot.hash_value) > threshold ? true:false;
+        //console.log(oldSlot.averageIntensity - newSlot.averageIntensity);
+        newSlot.toPredict = Math.abs(oldSlot.averageIntensity - newSlot.averageIntensity) > threshold ? true:false;
     }
     //console.log('--------------');
        
@@ -24,5 +24,5 @@ function compareHashes(oldMessage, newMessage,threshold) {
 }
   
 module.exports = {
-    compareHashes
+    compareAverageIntensity
  };

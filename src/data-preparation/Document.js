@@ -16,7 +16,7 @@ class Document {
     
         // Create an object that represents your class instance
         const obj = {
-            file_name: this.#_filename,
+            fileName: this.#_filename,
             slots: slotsStr,
             //datetime: this.#_datetime
         };

@@ -3,7 +3,7 @@
 const cpPredictOldToNewBeforeStore = (newData, oldData) => {
 
     // Extract the parking name
-    newData['parking_name'] = "Student residences";
+    newData['parkingName'] = "Student residences";
     
     newData.slots.forEach((slot, index) => {
         

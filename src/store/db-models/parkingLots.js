@@ -22,17 +22,17 @@ const PredictionSchema = new Schema({
 
 // Define the Slot schema
 const SlotSchema = new Schema({
-    filename: String,
+    fileName: String,
     coordinate: CoordinateSchema,
     prediction: PredictionSchema,
-    lot_name: String 
+    lotName: String 
 });
 
 // Define the main schema
 const ParkingLotsSchema = new Schema({
-    file_name: String,
+    fileName: String,
     slots: [SlotSchema],
-    parking_name: String 
+    parkingName: String 
 },{timestamps : true});
 
 // Create the model

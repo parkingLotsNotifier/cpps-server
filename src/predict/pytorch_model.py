@@ -87,7 +87,7 @@ if __name__ == "__main__":
         isToPredict = True if 'toPredict' in slots[0] else False
         for slot in slots:
             if ((not isToPredict) or (slot['toPredict'] is True )):
-                filename = slot['filename']
+                filename = slot['fileName']
                 class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
                 slot['prediction'] = {
                     'class': class_name,
