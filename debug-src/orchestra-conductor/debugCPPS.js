@@ -1,10 +1,9 @@
-const { spawn ,spawnSync} = require('child_process');
+const { spawn } = require('child_process');
 const {createLogger} = require('../../src/logger/logger');
 const {generateCroppedPicNames} = require('../../src/data-preparation/croppedFileNames')
 const Blueprint = require('../../src/data-preparation/Blueprint')
 const fs = require('fs');
 const util = require('util');
-const net = require('net');
 const path = require('path');
 const {getRois,getAvgs,setRois,setAvgs,createSocketServer} = require('../../src/socket-server/unixDomainSocketServer');
 const Document = require('../../src/data-preparation/Document');
@@ -119,7 +118,7 @@ const debugCPPS = async () => {
   
       let croppedMessage = JSON.parse(doc.toString(),reviver);
    
-    const isCropped = croppedMessage.file_name != undefined ? true:false
+    const isCropped = croppedMessage.fileName != undefined ? true:false
     if(!isCropped){
       throw new Error(croppedMessage.error)
     }
@@ -141,10 +140,10 @@ const debugCPPS = async () => {
     //move predictions
     pytorchMessage.slots.forEach((slot)=>{
        if(slot.prediction.class == "occupied"){
-        spawn('mv', [`${destCroppedPicturesPath}/${slot.filename}`,`${pathOccupied}`]);
+        spawn('mv', [`${destCroppedPicturesPath}/${slot.fileName}`,`${pathOccupied}`]);
        }
        else{
-        spawn('mv', [`${destCroppedPicturesPath}/${slot.filename}`,`${pathUnoccupied}`]);
+        spawn('mv', [`${destCroppedPicturesPath}/${slot.fileName}`,`${pathUnoccupied}`]);
        }
 
     });
