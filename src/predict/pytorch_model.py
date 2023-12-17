@@ -12,6 +12,7 @@ from logger.logger import setup_logger
 logger = setup_logger("pytorch_model") 
 model_path="/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/my_NETMODELV3_IMAGENET1K_V1_balanced.pth"
 label_path = "/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/model-and-label/labels.txt"
+predictions=[]
 
 # Define transforms
 data_transforms = transforms.Compose([
@@ -85,17 +86,17 @@ if __name__ == "__main__":
 
         # Checks if entered on the first run, if so isToPredict equals False
         isToPredict = True if 'toPredict' in slots[0] else False
-        for slot in slots:
+        for index,slot in enumerate(slots):
             if ((not isToPredict) or (slot['toPredict'] is True )):
                 filename = slot['fileName']
                 class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
-                slot['prediction'] = {
-                    'class': class_name,
-                    'confidence': confidence_score
-                }
+                predictions.append( {
+                    'index':index,
+                    'prediction' : {'class': class_name, 'confidence': confidence_score}                                       
+                })
     
-        logger.info(f"MobileNet_V3_large predicted : {json.dumps(input_message)}")
-        print(json.dumps(input_message))
+        logger.info(f"MobileNet_V3_large predicted : {json.dumps(predictions)}")
+        print(json.dumps(predictions))
         sys.stdout.flush()
         logger.info("MobileNet_V3 predicted and sent via IPC the results to startCPPS")
         sys.exit(0)

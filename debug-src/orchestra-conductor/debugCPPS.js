@@ -28,7 +28,7 @@ const executeChildProcess = (cmd, args, options) => {
     let messageData;
 
     child.stdout.on('data', (data) => {
-      const message = JSON.parse(data.toString());
+      const message = JSON.parse(data.toString(),reviver);
       resolve(message);
   });
 
@@ -115,22 +115,24 @@ const debugCPPS = async () => {
         let coordinate = new Coordinate(...lstOfDictLotNameBbox[i].bbox);
         doc.addSlot(new Slot(lstOfDictLotNameBbox[i].lotName,coordinate,croppedPicNames[i],rois[i],avgs[i]));
       }
-  
-      let croppedMessage = JSON.parse(doc.toString(),reviver);
+      
+      let msg = JSON.parse(doc.toString(),reviver);
    
-    const isCropped = croppedMessage.fileName != undefined ? true:false
+    const isCropped = msg.fileName != undefined ? true:false
     if(!isCropped){
-      throw new Error(croppedMessage.error)
+      throw new Error(msg.error)
     }
     logger.verbose(`photo name ${pictureName} has been cropped `)
     
 
     //prediction - child process
-    const pytorchMessage =  await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(croppedMessage)], {
+    const pytorchMessage =  await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(msg)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });    
-    
-    const isPredict = pytorchMessage.slots[0].prediction != undefined ? true:false;
+    pytorchMessage.forEach((prediction)=>{
+      msg.slots[prediction.index].prediction=prediction.prediction;
+    })
+    const isPredict = msg.slots[0].prediction != undefined ? true:false;
     if(!isPredict){
       throw new Error(pytorchMessage.error);
     }
@@ -138,7 +140,7 @@ const debugCPPS = async () => {
 
     
     //move predictions
-    pytorchMessage.slots.forEach((slot)=>{
+    msg.slots.forEach((slot)=>{
        if(slot.prediction.class == "occupied"){
         spawn('mv', [`${destCroppedPicturesPath}/${slot.fileName}`,`${pathOccupied}`]);
        }
@@ -150,7 +152,7 @@ const debugCPPS = async () => {
         
    
    
-   console.log( util.inspect( pytorchMessage,{ depth: null }));
+   console.log( util.inspect( msg,{ depth: null }));
    
    
   });

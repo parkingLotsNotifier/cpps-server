@@ -44,7 +44,7 @@ const executeChildProcess = (cmd, args, options) => {
     let messageData;
 
     child.stdout.on('data', (data) => {
-      const message = JSON.parse(data.toString());
+      const message = JSON.parse(data.toString(),reviver);
       resolve(message);
   });
 
@@ -143,9 +143,16 @@ const startCPPS = async () => {
     currMsg = prevMsg === undefined ? currMsg:compareAverageIntensity(prevMsg,currMsg,threshold);
     
     //prediction - child process
-    currMsg = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
+   
+    let predictions = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
-    });    
+    }); 
+    
+    //TODO: the initialization of slots needs to be consolidated within the Document class.
+    predictions.forEach((prediction)=>{
+      currMsg.slots[prediction.index].prediction=prediction.prediction;
+    })
+
     const isPredict = currMsg.fileName != undefined ? true:false;
     if(!isPredict){
       throw new Error(currMsg.error)
@@ -154,12 +161,15 @@ const startCPPS = async () => {
     
 
     //prepair data for store
+    
+    //TODO: the parkingName is given inside cpPredictOldToNewBeforeStore , it is not belong here. instead it should be within Document class.
+    //TODO: The methods cpPredictOldToNewBeforeStore and deleteToPredictAndAverageIntensity should be consolidated within the Document class.
     currMsg =  cpPredictOldToNewBeforeStore(currMsg, prevMsg);
     
     prevMsg = structuredClone(currMsg);
     
     currMsg =  deleteToPredictAndAverageIntensity(currMsg);   
-  
+    
     
   //store
     const isStored =  storeParkingLotsData(currMsg);
