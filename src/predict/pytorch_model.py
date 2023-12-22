@@ -83,11 +83,11 @@ if __name__ == "__main__":
         src_path,input_message = sys.argv[1:3]
         input_message = json.loads(input_message)
         slots = input_message['slots']
-
+        logger.info(slots)
         # Checks if entered on the first run, if so isToPredict equals False
-        isToPredict = True if 'toPredict' in slots[0] else False
+        isToPredict = True if slots[0]['toPredict'] is None else False
         for index,slot in enumerate(slots):
-            if ((not isToPredict) or (slot['toPredict'] is True )):
+            if ((isToPredict) or (slot['toPredict'] is True )):
                 filename = slot['fileName']
                 class_name, confidence_score = predict_occupancy(f'{src_path}/{filename}')
                 predictions.append( {

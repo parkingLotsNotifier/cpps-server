@@ -3,18 +3,14 @@ const { rotateImage } = require('../process/rotate');
 const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
-const {cpPredictOldToNewBeforeStore} = require('../data-preparation/cpPredictOldToNewBeforeStore')
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
 const {compareAverageIntensity} = require('../process/compareAverageIntensity')
-const {deleteToPredictAndAverageIntensity} = require('../data-preparation/deleteToPredictAndAverageIntensity')
 const {generateCroppedPicNames} = require('../data-preparation/croppedFileNames')
 const path = require('path');
 const Blueprint = require('../data-preparation/Blueprint')
 const fs = require('fs')
 const {getRois,getAvgs,setRois,setAvgs,createSocketServer} = require('../socket-server/unixDomainSocketServer');
 const Document = require('../data-preparation/Document');
-const Coordinate = require('../data-preparation/Coordinate');
-const Slot = require('../data-preparation/Slot');
 
 const logger = createLogger('startCPPS');
 let croppedPicNames;
@@ -41,7 +37,7 @@ function reviver(key, value) {
 const executeChildProcess = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, options);
-    let messageData;
+    
 
     child.stdout.on('data', (data) => {
       const message = JSON.parse(data.toString(),reviver);
@@ -98,7 +94,7 @@ const startCPPS = async () => {
     */
     
     //rotate
-    const isRotated = await rotateImage(`${srcPicturePath}/${pictureName}.jpg`);//TODO: why on capturePhoto we used spawn and here exec ? , is rotateImage can be a python script ?
+    const isRotated = await rotateImage(`${srcPicturePath}/${pictureName}.jpg`);
     if(isRotated){
       logger.verbose(`photo name ${pictureName} has been rotated `)
     }
@@ -113,6 +109,7 @@ const startCPPS = async () => {
     });
     
     //save
+    //TODO: is it possible to save using fs module ?
     await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
@@ -122,69 +119,62 @@ const startCPPS = async () => {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });
     
-    //this replace the create slots
-    let doc = new Document(pictureName);
-    let rois = JSON.parse(getRois());
-    let avgs = JSON.parse(getAvgs());
-    for( let i=0;i<croppedPicNames.length;i++){
-      let coordinate = new Coordinate(...lstOfDictLotNameBbox[i].bbox);
-      doc.addSlot(new Slot(lstOfDictLotNameBbox[i].lotName,coordinate,croppedPicNames[i],rois[i],avgs[i]));
-    }
-
-    let currMsg = JSON.parse(doc.toString(),reviver);
     
-    const isCropped = currMsg.fileName != undefined ? true:false
+    let doc = new Document(pictureName,croppedPicNames,JSON.parse(getRois()),JSON.parse(getAvgs()),lstOfDictLotNameBbox,"Student residences");
+   
+
+    
+    const isCropped = doc.filename != undefined ? true:false
     if(!isCropped){
-      throw new Error(currMsg.error)
+      throw new Error(doc.error);
     }
-    logger.verbose(`photo name ${pictureName} has been cropped `)
+    logger.verbose(`photo name ${pictureName} has been cropped`);
   
     const threshold = 10;
-    currMsg = prevMsg === undefined ? currMsg:compareAverageIntensity(prevMsg,currMsg,threshold);
+    
+    //TODO: compareAverageIntensity needs to be consilidate within Document class
+    doc = prevMsg === undefined ? doc:compareAverageIntensity(prevMsg,doc,threshold);
     
     //prediction - child process
-   
-    let predictions = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(currMsg)], {
+    
+    let predictions = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(JSON.parse(doc.toString(),reviver))], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     }); 
     
     //TODO: the initialization of slots needs to be consolidated within the Document class.
     predictions.forEach((prediction)=>{
-      currMsg.slots[prediction.index].prediction=prediction.prediction;
+      doc.slots[prediction.index].prediction=prediction.prediction;
     })
 
-    const isPredict = currMsg.fileName != undefined ? true:false;
+    const isPredict = doc.filename != undefined ? true:false;
     if(!isPredict){
-      throw new Error(currMsg.error)
+      throw new Error(doc.error)
     }
     logger.verbose(`photo name ${pictureName} has been predicted`);
     
 
     //prepair data for store
     
-    //TODO: the parkingName is given inside cpPredictOldToNewBeforeStore , it is not belong here. instead it should be within Document class.
-    //TODO: The methods cpPredictOldToNewBeforeStore and deleteToPredictAndAverageIntensity should be consolidated within the Document class.
-    currMsg =  cpPredictOldToNewBeforeStore(currMsg, prevMsg);
+    doc.cpPredictOldToNewBeforeStore(prevMsg);
     
-    prevMsg = structuredClone(currMsg);
-    
-    currMsg =  deleteToPredictAndAverageIntensity(currMsg);   
+    prevMsg = JSON.parse(doc.toString(),reviver);
+     
     
     
   //store
-    const isStored =  storeParkingLotsData(currMsg);
+    const isStored =  storeParkingLotsData(JSON.parse(doc.toString(),reviver));
     if(isStored){
       logger.verbose(`predictions has been saved to DB`)
     }
     
     const sleep = (secs) => {
       return new Promise((resolve) => {
-        setTimeout(resolve, secs * 1000); 
+        setTimeout(resolve(true), secs * 1000); 
       });
     }
 
     //rest
-    const isResting = await sleep(5);
+    const isResting = await sleep(1);
     if(isResting){
       logger.verbose('zZzZ.. Server is well rested')
     }

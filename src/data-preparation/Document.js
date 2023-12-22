@@ -1,13 +1,20 @@
 // Assuming Slot is imported or defined above
 const Slot = require('./Slot'); // Example import if Slot is a separate module
-
+const Coordinate = require('./Coordinate');
 class Document {
    
     #_filename = null
     #_slots = []
     #_datetime = null
-    constructor(filename) {
+    #_parkingName = null
+    constructor(filename,croppedPicNames,rois,avgs,lstOfDictLotNameBbox,parkingName) {
         this.#_filename = filename;
+        for( let i=0;i<croppedPicNames.length;i++){
+            let coordinate = new Coordinate(...lstOfDictLotNameBbox[i].bbox);
+            let slot = new Slot(lstOfDictLotNameBbox[i].lotName,coordinate,croppedPicNames[i],rois[i],avgs[i]);
+            this.addSlot(slot);
+          }
+          this.#_parkingName = parkingName;
     }
 
     toString() {
@@ -42,9 +49,37 @@ class Document {
         this.#_datetime = datetime;
     }
 
-    addSlot(slot) { // Renamed from 'slots' for clarity
+    addSlot(slot) { 
         this.#_slots.push(slot);
     }
+
+    cpPredictOldToNew(oldDoc, index, slot) {
+        if (oldDoc.slots[index] && oldDoc.slots[index].prediction) {
+            slot.prediction = oldDoc.slots[index].prediction;
+        }
+    }
+
+    cpPredictOldToNewBeforeStore(oldDoc){
+        if(oldDoc != undefined){
+            this.slots.forEach((slot, index) => {
+            
+    
+                if ( slot.toPredict===null || slot.toPredict === false ) {
+                    
+                    // Copy prediction from oldDoc to this
+                
+                    this.cpPredictOldToNew(oldDoc, index, slot);
+                    
+                }
+                
+            });
+    }
+        
+    };
+
+   
+    
+
 }
 
 module.exports=Document;

@@ -24,9 +24,9 @@ class Slot {
             coordinate: this.#_coordinate.toString(),
             fileName: this.#_croppedFilename,
             //roi: this.#_roi,
-            //prediction: this.#_prediction,
+            prediction: this.#_prediction,
             averageIntensity: this.#_averageIntensity,
-            //toPredict: this.#_toPredict
+            toPredict: this.#_toPredict
         }
         
         return JSON.stringify(obj);

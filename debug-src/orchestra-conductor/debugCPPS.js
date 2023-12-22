@@ -108,51 +108,41 @@ const debugCPPS = async () => {
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });
         
-      let doc = new Document(pictureName);
-      let rois = JSON.parse(getRois());
-      let avgs = JSON.parse(getAvgs());
-      for( let i=0;i<croppedPicNames.length;i++){
-        let coordinate = new Coordinate(...lstOfDictLotNameBbox[i].bbox);
-        doc.addSlot(new Slot(lstOfDictLotNameBbox[i].lotName,coordinate,croppedPicNames[i],rois[i],avgs[i]));
-      }
-      
-      let msg = JSON.parse(doc.toString(),reviver);
-   
-    const isCropped = msg.fileName != undefined ? true:false
-    if(!isCropped){
-      throw new Error(msg.error)
-    }
-    logger.verbose(`photo name ${pictureName} has been cropped `)
-    
+    logger.verbose(`photo name ${pictureName} has been cropped,saved and computed avarage intensity `)
 
+    let doc = new Document(pictureName,croppedPicNames,JSON.parse(getRois()),JSON.parse(getAvgs()),lstOfDictLotNameBbox,"Student residences");
+      
+      
     //prediction - child process
-    const pytorchMessage =  await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(msg)], {
+    const pytorchMessage =  await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(JSON.parse(doc.toString(),reviver))], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });    
-    pytorchMessage.forEach((prediction)=>{
-      msg.slots[prediction.index].prediction=prediction.prediction;
-    })
-    const isPredict = msg.slots[0].prediction != undefined ? true:false;
-    if(!isPredict){
+    
+    const isErrorOnPredict = pytorchMessage.error === undefined ? false:true;
+    if(isErrorOnPredict){
       throw new Error(pytorchMessage.error);
     }
+  
+    pytorchMessage.forEach((prediction)=>{
+      doc.slots[prediction.index].prediction=prediction.prediction;
+    })
+    
     logger.verbose(`photo name ${pictureName} has been predicted`);
-
     
     //move predictions
-    msg.slots.forEach((slot)=>{
+    doc.slots.forEach((slot)=>{
        if(slot.prediction.class == "occupied"){
-        spawn('mv', [`${destCroppedPicturesPath}/${slot.fileName}`,`${pathOccupied}`]);
+        spawn('mv', [`${destCroppedPicturesPath}/${slot.croppedFilename}`,`${pathOccupied}`]);
        }
        else{
-        spawn('mv', [`${destCroppedPicturesPath}/${slot.fileName}`,`${pathUnoccupied}`]);
+        spawn('mv', [`${destCroppedPicturesPath}/${slot.croppedFilename}`,`${pathUnoccupied}`]);
        }
 
     });
         
    
    
-   console.log( util.inspect( msg,{ depth: null }));
+   console.log( util.inspect(JSON.parse(doc.toString(),reviver),{ depth: null }));
    
    
   });
