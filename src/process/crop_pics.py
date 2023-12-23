@@ -1,5 +1,4 @@
 from crop_utils import convert_coordinate_float_to_int
-from  slot_utils import create_slot, compute_average_intensity, create_cropped_file_name
 import sys
 import cv2
 import os
