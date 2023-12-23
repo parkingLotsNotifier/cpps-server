@@ -103,7 +103,11 @@ class Document {
         return this;  // Return the updated newMessage with toPredict flags set
     }
     
-
+    initSlotPredictions(predictions){
+        predictions.forEach((prediction)=>{
+            this.slots[prediction.index].prediction=prediction.prediction;
+          })
+    }
 }
 
 module.exports=Document;

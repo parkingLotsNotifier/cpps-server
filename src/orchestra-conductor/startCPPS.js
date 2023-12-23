@@ -134,15 +134,11 @@ const startCPPS = async () => {
     doc = prevMsg === undefined ? doc:doc.compareAverageIntensity(prevMsg,threshold);
     
     //prediction - child process
-    
     let predictions = await executeChildProcess('python', [pytorchModelScriptPath, destCroppedPicturesPath,JSON.stringify(JSON.parse(doc.toString(),reviver))], {
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     }); 
     
-    //TODO: the initialization of slots needs to be consolidated within the Document class.
-    predictions.forEach((prediction)=>{
-      doc.slots[prediction.index].prediction=prediction.prediction;
-    })
+    doc.initSlotPredictions(predictions);
 
     const isPredict = doc.filename != undefined ? true:false;
     if(!isPredict){
