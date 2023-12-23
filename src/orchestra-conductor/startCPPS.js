@@ -4,7 +4,6 @@ const { capturePhoto } = require('../capture/captureWapper');
 const {storeParkingLotsData} =require('../store/store')
 const {createLogger} = require('../logger/logger');
 const { emitPipelineFinished, emitPipelineError } = require('../events/index');
-const {compareAverageIntensity} = require('../process/compareAverageIntensity')
 const {generateCroppedPicNames} = require('../data-preparation/croppedFileNames')
 const path = require('path');
 const Blueprint = require('../data-preparation/Blueprint')
@@ -130,10 +129,9 @@ const startCPPS = async () => {
     }
     logger.verbose(`photo name ${pictureName} has been cropped`);
   
-    const threshold = 10;
+    const threshold = 0;
     
-    //TODO: compareAverageIntensity needs to be consilidate within Document class
-    doc = prevMsg === undefined ? doc:compareAverageIntensity(prevMsg,doc,threshold);
+    doc = prevMsg === undefined ? doc:doc.compareAverageIntensity(prevMsg,threshold);
     
     //prediction - child process
     
