@@ -108,7 +108,6 @@ const startCPPS = async () => {
     });
     
     //save
-    //TODO: is it possible to save using fs module ?
     await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
       stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
     });

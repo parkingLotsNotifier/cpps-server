@@ -1,11 +1,9 @@
 from crop_utils import convert_coordinate_float_to_int
 import sys
 import cv2
-import os
 import json
 import base64
 import socket
-import time
 
 sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
 from logger.logger import setup_logger
