@@ -25,6 +25,7 @@ class Document {
         const obj = {
             fileName: this.#_filename,
             slots: slotsStr,
+            parkingName: this.#_parkingName,
             //datetime: this.#_datetime
         };
     
