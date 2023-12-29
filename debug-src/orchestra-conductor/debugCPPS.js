@@ -97,18 +97,20 @@ const debugCPPS = async () => {
       await executeChildProcess('python',[pyCropPics , srcPicturePath, pictureName.slice(0,-4) ,JSON.stringify(lstOfDictLotNameBbox),socketPath],{
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });
-      
+      logger.verbose(`photo name ${pictureName} has been cropped`);
+
       //save
       await executeChildProcess('python',[pySavePics , destCroppedPicturesPath,JSON.stringify(croppedPicNames),socketPath],{
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });
+      logger.verbose(`photo name ${pictureName} has been saved`);
       
       //compute avarage intensity
       await executeChildProcess('python',[pyCompAvgsIntens,socketPath],{
         stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ]
       });
-        
-    logger.verbose(`photo name ${pictureName} has been cropped,saved and computed avarage intensity `)
+      logger.verbose(`photo name ${pictureName} computed avarage intensity`); 
+    
 
     let doc = new Document(pictureName,croppedPicNames,JSON.parse(getRois()),JSON.parse(getAvgs()),lstOfDictLotNameBbox,"Student residences");
       
