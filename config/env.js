@@ -8,6 +8,9 @@ const env = {
             PORT : process.env.PORT,
             GREETING:'hello',
             FAREWELL:'goodbay',
+            
+            // logger props
+
             TELEGRAM_TOKEN : process.env.TELEGRAM_TOKEN,
             GMAIL_PASS : process.env.GMAIL_PASS,
             GMAIL_USERNAME : process.env.GMAIL_USERNAME,
@@ -15,6 +18,20 @@ const env = {
             MAIL_SOURCE : process.env.MAIL_SOURCE,
             CHAT_ID : process.env.CHAT_ID,
             SLACK_ERROR : process.env.SLACK_ERROR,
-            SLACK_INFO : process.env.SLACK_INFO
-            };
+            SLACK_INFO : process.env.SLACK_INFO,
+            
+            //google drive credentials props
+
+            CLIENT_ID : process.env.CLIENT_ID, 
+            CLIENT_SECRET : process.env.CLIENT_SECRET,
+            REDIRECT_URIS : process.env.REDIRECT_URIS,
+
+            //google drive token props
+
+            ACCESS_TOKEN : process.env.ACCESS_TOKEN,
+            REFRESH_TOKEN : process.env.REFRESH_TOKEN,
+            SCOPE : process.env.SCOPE,
+            TOKEN_TYPE : process.env.TOKEN_TYPE
+
+        };
 module.exports=env;

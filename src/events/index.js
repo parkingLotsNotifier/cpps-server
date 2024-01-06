@@ -18,9 +18,20 @@ const onPipelineError = (handler) => {
     eventEmitter.on('pipelineError', handler);
 };
 
+const emitPipelineClose = () => {
+    eventEmitter.emit('pipelineClose');
+};
+
+const oncPipelineClose = (handler) => {
+    eventEmitter.once('pipelineClose', handler);
+};
+
 module.exports = {
     emitPipelineFinished,
     onPipelineFinished,
     emitPipelineError,
-    onPipelineError
+    onPipelineError,
+    emitPipelineClose,
+    oncPipelineClose
+    
 };
