@@ -6,7 +6,8 @@
   "scripts": {
     "verbose": "nodemon app.js verbose",
     "start": "nodemon app.js",
-    "debug": "nodemon appDebug.js debug"
+    "debug": "nodemon appDebug.js debug",
+    "learn" : "nodemon appDCC.js"
   }, 
   "keywords": [],
   "author": "",
