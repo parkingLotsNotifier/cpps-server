@@ -156,6 +156,7 @@ const startDCC = async () => {
     logger.verbose(`photo name ${pictureName} has been cropped`);
 
 
+    // prediction as an outside service using https://github.com/parkingLotsNotifier/predict-server
     let predictions = await getPredictionsBase64(JSON.parse(getRois()));
 
     logger.verbose(`photo name ${pictureName} has been predict`);
