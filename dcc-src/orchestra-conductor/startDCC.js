@@ -2,7 +2,7 @@ const { spawn, exec } = require('child_process');
 const { rotateImage } = require('../../src/process/rotate');
 const { capturePhoto } = require('../../src/capture/captureWapper');
 const {createLogger} = require('../../src/logger/logger');
-const { emitPipelineFinished, emitPipelineError, oncPipelineClose } = require('../../src/events/index');
+const { emitPipelineFinished, emitPipelineError, oncPipelineClose ,oncPipelineContinue} = require('../../src/events/index');
 const {generateCroppedPicNames} = require('../../src/data-preparation/croppedFileNames')
 const path = require('path');
 const Blueprint = require('../../src/data-preparation/Blueprint')
@@ -10,26 +10,29 @@ const fs = require('fs');
 const fse = require('fs-extra');
 const {createSocketServer,getRois} = require('../../src/socket-server/unixDomainSocketServer');
 const Document = require('../../src/data-preparation/Document');
-const io = require('socket.io-client');
+const { connect } = require('../socketio-client/socketioClient');
 
-// A global flag
+
+//initializations 
 let pipelineShouldContinue = true;
 const logger = createLogger('startDCC');
 let croppedPicNames;
 const jsonFilePath ='/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
 const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
+let date;
+let date_DMY;
+let rootDateDir;
+let srcPicturePath;
+let destCroppedPicturesPath;
+let occupiedPath;
+let unoccupiedPath;
+
+createPaths();
+createFolderStructure();
 
 
-
-const date = new Date();
-date_DMY = `${date.getDate()}-${date.getMonth()}-${date.getFullYear()}`
-const rootDateDir = `/data/data/com.termux/files/home/photos/data-collection/${date_DMY}`;
-const srcPicturePath = `${rootDateDir}/original`;
-const destCroppedPicturesPath= `${rootDateDir}/cropped`;
-const occupiedPath = `${destCroppedPicturesPath}/occupied`;
-const unoccupiedPath = `${destCroppedPicturesPath}/unccupied`;
-
+//functions declerations
 function reviver(key, value) {
   // Assuming that if it's a string and starts with '{', it might be a JSON string.
   if (typeof value === "string" && value.startsWith('{')) {
@@ -42,16 +45,16 @@ function reviver(key, value) {
   return value; // Return the value unchanged if it's not a string or doesn't look like JSON
 }
 
+
+const socket = connect();
+
 const getPredictionsBase64 = async (base64Images) => {
   return new Promise((resolve, reject) => {
     try {
-      // Establish a connection to the WebSocket server
-      const socket = io('http://192.168.0.96:8001');
-
+      
       // Handle the event with the predictions response
       socket.on('predictions', (predictions) => {
         resolve(predictions);
-        socket.disconnect();
       });
 
       // Send the base64 images list
@@ -109,17 +112,38 @@ createSocketServer(socketPath);
 const blueprint = new Blueprint(jsonFilePath);
 const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 
-//creating a labeled dataset
-fse.ensureDirSync(rootDateDir);
-fse.ensureDirSync(srcPicturePath);
-fse.ensureDirSync(destCroppedPicturesPath);
-fse.ensureDirSync(occupiedPath);
-fse.ensureDirSync(unoccupiedPath);
+function createPaths() {
+  date = new Date();
+  date_DMY = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+  rootDateDir = `/data/data/com.termux/files/home/photos/data-collection/${date_DMY}`;
+  srcPicturePath = `${rootDateDir}/original`;
+  destCroppedPicturesPath = `${rootDateDir}/cropped`;
+  occupiedPath = `${destCroppedPicturesPath}/occupied`;
+  unoccupiedPath = `${destCroppedPicturesPath}/unccupied`;
 
+  
+}
+
+function createFolderStructure(){
+  fse.ensureDirSync(rootDateDir);
+  fse.ensureDirSync(srcPicturePath);
+  fse.ensureDirSync(destCroppedPicturesPath);
+  fse.ensureDirSync(occupiedPath);
+  fse.ensureDirSync(unoccupiedPath);
+}
 // Event listener for pipeline close
 oncPipelineClose(() => {
   pipelineShouldContinue = false;
   logger.info("Pipeline is closing");
+});
+
+oncPipelineContinue(() => {
+  pipelineShouldContinue = true;
+  logger.info("Pipeline is restarting");
+
+  //update the date and path
+  createPaths();
+  createFolderStructure();
 });
 
 const startDCC = async () => {
@@ -156,8 +180,8 @@ const startDCC = async () => {
     logger.verbose(`photo name ${pictureName} has been cropped`);
 
 
-    // prediction as an outside service using https://github.com/parkingLotsNotifier/classification-server
-    let predictions = await getPredictionsBase64(JSON.parse(getRois()));
+    // classification as an outside service using https://github.com/parkingLotsNotifier/classification-server
+    let classifications = await getPredictionsBase64(JSON.parse(getRois()));
 
     logger.verbose(`photo name ${pictureName} has been predict`);
     
@@ -169,7 +193,7 @@ const startDCC = async () => {
     
     logger.verbose(`photo name ${pictureName} has been saved`);
 
-    
+    //place holders for avarage intensitys and rois , hence slot's constructor  
     let placeholderAvgs = new Array(lstOfDictLotNameBbox.length).fill(0); 
     let placeholderRois = new Array(lstOfDictLotNameBbox.length).fill(0); 
     
@@ -177,9 +201,9 @@ const startDCC = async () => {
    
 
 
-    //store in folders
+    //store in folders after the 
     doc.slots.forEach((slot,index)=>{
-        if(predictions[index] == "occupied"){
+        if(classifications[index] == "occupied"){
          spawn('mv', [`${destCroppedPicturesPath}/${slot.croppedFilename}`,`${occupiedPath}`]);
         }
         else{
@@ -191,13 +215,28 @@ const startDCC = async () => {
     // Regularly check the state
     if (!pipelineShouldContinue) {
       logger.verbose("Stopping startDCC as pipeline is set to close");
-      return; // Exit the function
-    }    
+      return; // Exit the  startDCC function
+    }
+    
+    // const sleep = (secs) => {
+    //   return new Promise((resolve) => {
+    //     setTimeout(resolve(true), secs * 10000); 
+    //   });
+    // }
+
+    // //rest
+    // const isResting = await sleep(3000000000);
+    // if(isResting){
+    //   logger.verbose('zZzZ.. Server is well rested')
+    // }
+
+    await new Promise(resolve => setTimeout(resolve, 7000));
+      
     
     
     emitPipelineFinished();
-    // Regularly check the state
     
+
   } catch (error) {
     logger.error(`Error in startDCC: ${error.message}`);
     emitPipelineError(error);
@@ -207,3 +246,5 @@ const startDCC = async () => {
 module.exports = {
   startDCC,
 };
+
+

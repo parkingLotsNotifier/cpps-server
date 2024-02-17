@@ -11,6 +11,7 @@ const fs = require('fs')
 const {getRois,getAvgs,setRois,setAvgs,createSocketServer} = require('../socket-server/unixDomainSocketServer');
 const Document = require('../data-preparation/Document');
 
+//initializations
 const logger = createLogger('startCPPS');
 let croppedPicNames;
 let prevMsg;
@@ -22,6 +23,7 @@ const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps
 const pyCompAvgsIntens = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/compute_avarage_intensities.py'
 const pytorchModelScriptPath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/predict/pytorch_model.py'
 
+//functions declerations
 function reviver(key, value) {
   // Assuming that if it's a string and starts with '{', it might be a JSON string.
   if (typeof value === "string" && value.startsWith('{')) {
@@ -33,6 +35,7 @@ function reviver(key, value) {
   }
   return value; // Return the value unchanged if it's not a string or doesn't look like JSON
 }
+
 const executeChildProcess = (cmd, args, options) => {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, options);
@@ -73,7 +76,6 @@ createSocketServer(socketPath);
 //load Blueprint and extract the basic data
 const blueprint = new Blueprint(jsonFilePath);
 const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
-
 
 
 const startCPPS = async () => {

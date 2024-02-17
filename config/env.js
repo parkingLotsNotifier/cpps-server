@@ -33,7 +33,11 @@ const env = {
             ACCESS_TOKEN : process.env.ACCESS_TOKEN,
             REFRESH_TOKEN : process.env.REFRESH_TOKEN,
             SCOPE : process.env.SCOPE,
-            TOKEN_TYPE : process.env.TOKEN_TYPE
+            TOKEN_TYPE : process.env.TOKEN_TYPE,
+
+            //socketio addrs
+
+            SOCKETIO_ADDRS : process.env.SOCKETIO_ADDRS
 
         };
 module.exports=env;
