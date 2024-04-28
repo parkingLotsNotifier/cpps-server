@@ -2,6 +2,11 @@ const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
 const mime = require('mime-types');
+const { emitChangeMode, onChangeMode } = require('./src/events/index');
+const { getSunrise, getSunset } = require('sunrise-sunset-js');
+const jerusalemCoordinate = { "lat": 31.771959, "lng": 35.217018 };
+
+
 
 class GDriveUploader {
     constructor() {
@@ -51,7 +56,13 @@ class GDriveUploader {
         }
     }
 
-    async uploadFolder(localFolderPath, parentFolderId = null) {
+    timeToUpload(currentDate, sunRise, sunSet) {
+        const isNightTime = currentDate >= sunSet || currentDate < sunRise;
+        return isNightTime;
+    }
+
+    async uploadFolder(localFolderPath, parentFolderId = null, sunRise = getSunrise(jerusalemCoordinate.lat, jerusalemCoordinate.lng), sunSet = getSunset(jerusalemCoordinate.lat, jerusalemCoordinate.lng)) {
+
         const folderName = path.basename(localFolderPath);
         console.log(`folder name : ${folderName}`);
         console.log(`folder path : ${localFolderPath}`);
@@ -59,15 +70,29 @@ class GDriveUploader {
 
         const files = fs.readdirSync(localFolderPath);
         for (const file of files) {
+            if (!this.timeToUpload(new Date(), sunRise, sunSet)) {
+                console.log("Uploading folder process has stopped due to sunrise. Determining next mode...");
+                emitChangeMode();
+                return false; // Indicate that the upload was not completed
+            }
             const fullPath = path.join(localFolderPath, file);
             const stat = fs.statSync(fullPath);
-
             if (stat.isFile()) {
                 await this.uploadFile(fullPath, newFolderId);
+                fs.unlinkSync(fullPath); // Delete the file after upload
             } else if (stat.isDirectory()) {
-                await this.uploadFolder(fullPath, newFolderId);
+                // Check if directory is empty after the recursive upload
+                if (fs.readdirSync(fullPath).length === 0) {
+                    fs.rmdirSync(fullPath); // Delete the folder if it's empty
+                }
             }
         }
+
+        // Check if the root folder is now empty after all operations
+        if (fs.readdirSync(localFolderPath).length === 0) {
+            fs.rmdirSync(localFolderPath); // Remove the initial local folder if empty
+        }
+        return true; // Indicate successful completion of the upload
     }
 
     async uploadFile(filePath, parentFolderId = null) {
@@ -79,14 +104,14 @@ class GDriveUploader {
             mimeType: mime.lookup(filePath), // Automatically detect the mime type
             body: fs.createReadStream(filePath), // Read the file stream
         };
-    
+
         try {
             const response = await this.drive.files.create({
                 resource: fileMetadata,
                 media: media,
                 fields: 'id',
             });
-    
+
             console.log(`File uploaded: ${filePath} with id: ${response.data.id}`);
             return response.data.id;
         } catch (error) {

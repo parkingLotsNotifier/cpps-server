@@ -22,7 +22,7 @@ const emitPipelineClose = () => {
     eventEmitter.emit('pipelineClose');
 };
 
-const emitPiplineContinue = ()=>{
+const emitPiplineContinue = () => {
     eventEmitter.emit('piplineContinue');
 }
 
@@ -34,6 +34,13 @@ const oncPipelineContinue = (handler) => {
     eventEmitter.once('piplineContinue', handler);
 };
 
+const emitChangeMode = () => {
+    eventEmitter.emit('changeMode');
+};
+
+const onChangeMode = (handler) => {
+    eventEmitter.on('changeMode', handler);
+};
 
 module.exports = {
     emitPipelineFinished,
@@ -43,6 +50,7 @@ module.exports = {
     emitPipelineClose,
     oncPipelineClose,
     oncPipelineContinue,
-    emitPiplineContinue
-    
+    emitPiplineContinuem,
+    emitChangeMode,
+    onChangeMode
 };
