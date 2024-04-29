@@ -62,37 +62,47 @@ class GDriveUploader {
     }
 
     async uploadFolder(localFolderPath, parentFolderId = null, sunRise = getSunrise(jerusalemCoordinate.lat, jerusalemCoordinate.lng), sunSet = getSunset(jerusalemCoordinate.lat, jerusalemCoordinate.lng)) {
+        try {
+            const folderName = path.basename(localFolderPath);
+            console.log(`folder name : ${folderName}`);
+            console.log(`folder path : ${localFolderPath}`);
+            const newFolderId = await this.createFolder(folderName, parentFolderId);
 
-        const folderName = path.basename(localFolderPath);
-        console.log(`folder name : ${folderName}`);
-        console.log(`folder path : ${localFolderPath}`);
-        const newFolderId = await this.createFolder(folderName, parentFolderId);
+            const files = fs.readdirSync(localFolderPath);
+            for (const file of files) {
+                const fullPath = path.join(localFolderPath, file);
+                const stat = fs.statSync(fullPath);
 
-        const files = fs.readdirSync(localFolderPath);
-        for (const file of files) {
-            if (!this.timeToUpload(new Date(), sunRise, sunSet)) {
-                console.log("Uploading folder process has stopped due to sunrise. Determining next mode...");
-                emitChangeMode();
-                return false; // Indicate that the upload was not completed
-            }
-            const fullPath = path.join(localFolderPath, file);
-            const stat = fs.statSync(fullPath);
-            if (stat.isFile()) {
-                await this.uploadFile(fullPath, newFolderId);
-                fs.unlinkSync(fullPath); // Delete the file after upload
-            } else if (stat.isDirectory()) {
-                // Check if directory is empty after the recursive upload
-                if (fs.readdirSync(fullPath).length === 0) {
-                    fs.rmdirSync(fullPath); // Delete the folder if it's empty
+                if (stat.isFile()) {
+                    if (!this.timeToUpload(new Date(), sunRise, sunSet)) {
+                        console.log("Uploading folder process has stopped due to sunrise. Determining next mode...");
+                        emitChangeMode();
+                        return false; // Indicate that the upload was not completed
+                    }
+                    await this.uploadFile(fullPath, newFolderId);
+                    fs.unlinkSync(fullPath); // Delete the file after upload
+                } else if (stat.isDirectory()) {
+                    if (fs.readdirSync(fullPath).length === 0) {
+                        fs.rmdirSync(fullPath); // Delete the folder if it's empty
+                    } else { // Directory isn't empty -> continue recursive upload
+                        const recursiveResult = await this.uploadFolder(fullPath, newFolderId);
+                        if (!recursiveResult) {
+                            console.log("Uploading folder process has stopped due to unsuccessful sub-dir upload.");
+                            return false; // Stop if recursive upload failed
+                        }
+                    }
                 }
             }
-        }
 
-        // Check if the root folder is now empty after all operations
-        if (fs.readdirSync(localFolderPath).length === 0) {
-            fs.rmdirSync(localFolderPath); // Remove the initial local folder if empty
+            // Check if the root folder is now empty after all operations
+            if (fs.readdirSync(localFolderPath).length === 0) {
+                fs.rmdirSync(localFolderPath); // Remove the initial local folder if empty
+            }
+            return true; // Indicate successful completion of the upload
+        } catch (error) {
+            console.error(`Error during folder upload: ${error.message}`);
+            return false; // Return false to indicate failure
         }
-        return true; // Indicate successful completion of the upload
     }
 
     async uploadFile(filePath, parentFolderId = null) {
