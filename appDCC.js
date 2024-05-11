@@ -3,7 +3,7 @@ const express = require('express');
 const GDriveUploader = require('./dcc-src/upload/GDriveUploader');
 const cors = require('cors');
 const { PORT, ...rest } = require('./config/env');
-const { onPipelineFinished, onPipelineError, emitPipelineClose, emitPiplineContinue } = require('./src/events/index');
+const { onChangeMode, onPipelineFinished, onPipelineError, emitPipelineClose, emitPiplineContinue } = require('./src/events/index');
 const { startDCC } = require('../cpps-server/dcc-src/orchestra-conductor/startDCC');
 const { getSunrise, getSunset } = require('sunrise-sunset-js');
 const { exec } = require('child_process');
@@ -33,35 +33,43 @@ onChangeMode(async () => {
     await determineMode();
 });
 
-// Restart data collection after pipeline finishes or encounters an error
-onPipelineFinished(startDCC);
-onPipelineError(startDCC);
 
-// Function to determine mode based on current time
-async function determineMode() {
-    // Calculate sunrise and sunset for the current day
-    const sunSet = getSunset(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
-    const sunRise = getSunrise(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
-    const currentDate = new Date();
+function checksIfAcquisitionTime() {
+    const now = new Date();
+    const sunrise = getSunrise(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
+    const sunset = getSunset(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
 
-    if (currentDate < sunRise) {
-        console.log("Activating upload mode.");
-        emitPipelineClose();
-        await performUpload();
-    } else if (currentDate >= sunRise && currentDate < sunSet) {
-        console.log("Activating acquisition mode.");
-        emitPiplineContinue();
-        startDCC();
-    } else if (currentDate >= sunSet) {
-        console.log("Activating upload mode.");
-        emitPipelineClose();
-        await performUpload();
+    //DEBUGGING
+    // Define hardcoded sunrise time
+    // const sunrise = new Date();
+    // sunrise.setHours(6, 30, 0); // Assuming sunrise is at 6:30 AM
+
+    // // Set currentDate to one minute before sunrise
+    // const now = new Date(sunrise.getTime() - 60000); // Subtract 60,000 milliseconds (1 minute)
+
+    // // Define a sunset time for completeness
+    // const sunset = new Date();
+    // sunset.setHours(19, 30, 0); // Assuming sunset is at 7:30 PM
+    
+    // Checking if current time is between sunrise and sunset
+    if (now >= sunrise && now <= sunset) {
+        return true;
     }
+    else { return false; }
 }
 
-// Activate mode based on current time
-determineMode();
 
+// // Restart data collection after pipeline finishes or encounters an error
+// onPipelineFinished(startDCC);
+// onPipelineError(startDCC);
+// Restart data collection after pipeline finishes or encounters an error
+onPipelineFinished(async () => {
+    if (checksIfAcquisitionTime()) { await startDCC(); } else { await determineMode(); }
+});
+onPipelineError(async () => {
+    if (checksIfAcquisitionTime()) { await startDCC(); }
+    else { await determineMode(); }
+});
 // // Schedule the upload job
 // schedule.scheduleJob({ hour: sunSet.getHours(), minute: sunSet.getMinutes() }, async () => {
 //     emitPipelineClose();
@@ -75,7 +83,7 @@ async function performUpload() {
     const uploader = new GDriveUploader();
     await uploader.authenticate();
 
-    const date = new Date();
+    let date = new Date();
     const sunRise = getSunrise(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
 
     // Adjust the date if current time is before sunrise (still working on the directory of yasterday's)
@@ -89,8 +97,67 @@ async function performUpload() {
     const finishedUploading = await uploader.uploadFolder(rootDateDir);
     if (finishedUploading) {
         console.log('Folder uploaded successfully with the same structure, folder is removed from server memory');
+
+    }
+    //updating to real-time date before calculation
+    date = new Date();
+    let delayUntilNextStart = Math.abs(sunRise.getTime() - date.getTime());
+    // Convert delay from milliseconds to hours and minutes
+    let hours = Math.floor(delayUntilNextStart / (1000 * 60 * 60));
+    let minutes = Math.floor((delayUntilNextStart % (1000 * 60 * 60)) / (1000 * 60));
+    console.log(`Delay until next start: ${hours} hours and ${minutes} minutes`);
+    setTimeout(() => {
+        determineMode();
+    }, delayUntilNextStart);
+}
+
+
+// Function to determine mode based on current time
+async function determineMode() {
+    try {
+        // Calculate sunrise and sunset for the current day
+
+        const sunSet = getSunset(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
+        const sunRise = getSunrise(jerusalemCoordinate.lat, jerusalemCoordinate.lng);
+        const currentDate = new Date();
+
+        //DEBUGGING 
+        // Define hardcoded sunrise time
+        // const sunRise = new Date();
+        // sunRise.setHours(6, 30, 0); // Assuming sunrise is at 6:30 AM
+
+        // // Set currentDate to five minutes after sunrise
+        // const currentDate = new Date(sunRise.getTime() + 300000); // Add 300,000 milliseconds (5 minutes)
+
+        // // Define a sunset time for completeness
+        // const sunSet = new Date();
+        // sunSet.setHours(19, 30, 0); // Assuming sunset is at 7:30 PM
+
+        // Log for debugging
+        console.log(`Sunrise: ${sunRise},\n Sunset: ${sunSet},\n Current time: ${currentDate}`);
+
+        console.log("after sunset and sunrise calculation");
+        if (currentDate < sunRise) {
+            console.log("Activating upload mode.");
+            emitPipelineClose();
+            await performUpload();
+        } else if (currentDate >= sunRise && currentDate < sunSet) {
+            console.log("Activating acquisition mode.");
+            emitPiplineContinue(); // Fix the spelling here if necessary
+            await startDCC();
+        } else if (currentDate >= sunSet) {
+            console.log("Activating upload mode.");
+            emitPipelineClose();
+            await performUpload();
+        }
+    } catch (error) {
+        console.error(`Error in determineMode: ${error.message}`);
     }
 }
+
+// Activate mode based on current time
+determineMode();
+
 // function restartDataCollection() {
 //     const now = new Date();
 

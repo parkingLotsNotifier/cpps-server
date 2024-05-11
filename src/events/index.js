@@ -50,7 +50,7 @@ module.exports = {
     emitPipelineClose,
     oncPipelineClose,
     oncPipelineContinue,
-    emitPiplineContinuem,
+    emitPiplineContinue,
     emitChangeMode,
     onChangeMode
 };

@@ -2,7 +2,7 @@ const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
 const mime = require('mime-types');
-const { emitChangeMode, onChangeMode } = require('./src/events/index');
+const { emitChangeMode, onChangeMode } = require('../../src/events/index');
 const { getSunrise, getSunset } = require('sunrise-sunset-js');
 const jerusalemCoordinate = { "lat": 31.771959, "lng": 35.217018 };
 
@@ -67,7 +67,10 @@ class GDriveUploader {
             console.log(`folder name : ${folderName}`);
             console.log(`folder path : ${localFolderPath}`);
             const newFolderId = await this.createFolder(folderName, parentFolderId);
-
+            if (!fs.existsSync(localFolderPath) || fs.readdirSync(localFolderPath).length === 0){
+                console.log("Uploading folder process has stopped, folder is empty or do not exists");
+                return false;
+            }
             const files = fs.readdirSync(localFolderPath);
             for (const file of files) {
                 const fullPath = path.join(localFolderPath, file);
