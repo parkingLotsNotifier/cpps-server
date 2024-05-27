@@ -66,16 +66,28 @@ class GDriveUploader {
             const folderName = path.basename(localFolderPath);
             console.log(`folder name : ${folderName}`);
             console.log(`folder path : ${localFolderPath}`);
-            const newFolderId = await this.createFolder(folderName, parentFolderId);
-            if (!fs.existsSync(localFolderPath) || fs.readdirSync(localFolderPath).length === 0){
-                console.log("Uploading folder process has stopped, folder is empty or do not exists");
+    
+            let newFolderId;
+    
+            // Check if the folder exists on Google Drive
+            const folderExists = await this.checkIfFolderExists(folderName, parentFolderId);
+            if (folderExists) {
+                newFolderId = folderExists;
+                console.log(`Folder already exists with ID: ${newFolderId}`);
+            } else {
+                newFolderId = await this.createFolder(folderName, parentFolderId);
+            }
+    
+            if (!fs.existsSync(localFolderPath) || fs.readdirSync(localFolderPath).length === 0) {
+                console.log("Uploading folder process has stopped, folder is empty or does not exist");
                 return false;
             }
+    
             const files = fs.readdirSync(localFolderPath);
             for (const file of files) {
                 const fullPath = path.join(localFolderPath, file);
                 const stat = fs.statSync(fullPath);
-
+    
                 if (stat.isFile()) {
                     if (!this.timeToUpload(new Date(), sunRise, sunSet)) {
                         console.log("Uploading folder process has stopped due to sunrise. Determining next mode...");
@@ -88,7 +100,7 @@ class GDriveUploader {
                     if (fs.readdirSync(fullPath).length === 0) {
                         fs.rmdirSync(fullPath); // Delete the folder if it's empty
                     } else { // Directory isn't empty -> continue recursive upload
-                        const recursiveResult = await this.uploadFolder(fullPath, newFolderId);
+                        const recursiveResult = await this.uploadFolder(fullPath, newFolderId, sunRise, sunSet);
                         if (!recursiveResult) {
                             console.log("Uploading folder process has stopped due to unsuccessful sub-dir upload.");
                             return false; // Stop if recursive upload failed
@@ -96,7 +108,7 @@ class GDriveUploader {
                     }
                 }
             }
-
+    
             // Check if the root folder is now empty after all operations
             if (fs.readdirSync(localFolderPath).length === 0) {
                 fs.rmdirSync(localFolderPath); // Remove the initial local folder if empty
@@ -105,6 +117,23 @@ class GDriveUploader {
         } catch (error) {
             console.error(`Error during folder upload: ${error.message}`);
             return false; // Return false to indicate failure
+        }
+    }
+    
+    async checkIfFolderExists(name, parentId = null) {
+        const query = `mimeType='application/vnd.google-apps.folder' and name='${name}'` + (parentId ? ` and '${parentId}' in parents` : '');
+        try {
+            const response = await this.drive.files.list({
+                q: query,
+                fields: 'files(id, name)',
+            });
+            if (response.data.files.length > 0) {
+                return response.data.files[0].id;
+            } else {
+                return null;
+            }
+        } catch (error) {
+            throw new Error(`Error checking if folder exists: ${error.message}`);
         }
     }
 
@@ -131,6 +160,7 @@ class GDriveUploader {
             throw new Error(`Error uploading file ${filePath}: ${error.message}`);
         }
     }
+
 }
 
 module.exports = GDriveUploader;

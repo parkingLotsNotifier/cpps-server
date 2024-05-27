@@ -99,9 +99,16 @@ async function performUpload() {
         console.log('Folder uploaded successfully with the same structure, folder is removed from server memory');
 
     }
+    
     //updating to real-time date before calculation
     date = new Date();
+    
+    // If the current time is after today's sunrise, set sunrise to the next day's sunrise
+    if (date.getTime() > sunRise.getTime()) 
+        sunRise.setDate(sunRise.getDate() + 1);
+    
     let delayUntilNextStart = Math.abs(sunRise.getTime() - date.getTime());
+   
     // Convert delay from milliseconds to hours and minutes
     let hours = Math.floor(delayUntilNextStart / (1000 * 60 * 60));
     let minutes = Math.floor((delayUntilNextStart % (1000 * 60 * 60)) / (1000 * 60));
