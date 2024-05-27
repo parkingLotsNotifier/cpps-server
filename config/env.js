@@ -37,7 +37,11 @@ const env = {
 
             //socketio addrs
 
-            SOCKETIO_ADDRS : process.env.SOCKETIO_ADDRS
+            SOCKETIO_ADDRS : process.env.SOCKETIO_ADDRS,
+
+            // root folder path
+
+            ROOT_FOLDER_PATH : process.env.ROOT_FOLDER_PATH
 
         };
 module.exports=env;
