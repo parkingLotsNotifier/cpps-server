@@ -2,7 +2,7 @@ const { spawn, exec } = require('child_process');
 const { rotateImage } = require('../../src/process/rotate');
 const { capturePhoto } = require('../../src/capture/captureWapper');
 const { createLogger } = require('../../src/logger/logger');
-const { emitPipelineFinished, emitPipelineError, oncPipelineClose, oncPipelineContinue } = require('../../src/events/index');
+const { emitPipelineFinished, emitPipelineError } = require('../../src/events/index');
 const { generateCroppedPicNames } = require('../../src/data-preparation/croppedFileNames')
 const path = require('path');
 const Blueprint = require('../../src/data-preparation/Blueprint')
@@ -101,16 +101,6 @@ createSocketServer(socketPath);
 const blueprint = new Blueprint(jsonFilePath);
 const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 
-// Event listener for pipeline close
-oncPipelineClose(() => {
-  pipelineShouldContinue = false;
-  logger.info("Pipeline is closing");
-});
-
-oncPipelineContinue(() => {
-  pipelineShouldContinue = true;
-  logger.info("Pipeline is restarting");
-});
 
 const startDCC = async () => {
   try {
@@ -188,12 +178,6 @@ const startDCC = async () => {
     })
 
     logger.verbose(`cropped photos moved to their folders`);
-
-    // Regularly check the state
-    if (!pipelineShouldContinue) {
-      logger.verbose("Stopping startDCC as pipeline is set to close");
-      return; // Exit the  startDCC function
-    }
 
     // const sleep = (secs) => {
     //   return new Promise((resolve) => {

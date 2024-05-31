@@ -2,7 +2,7 @@ const express = require("express");
 const GDriveUploader = require("./dcc-src/upload/GDriveUploader");
 const cors = require("cors");
 const { PORT, ...rest } = require("./config/env");
-const { onChangeMode, onPipelineFinished, onPipelineError, emitPipelineClose, emitPiplineContinue } = require("./src/events/index");
+const { onChangeMode, onPipelineFinished, onPipelineError } = require("./src/events/index");
 const init = require("./src/utils/Init");
 const { startDCC } = require("../cpps-server/dcc-src/orchestra-conductor/startDCC");
 const { getSunrise, getSunset } = require("sunrise-sunset-js");
@@ -142,18 +142,15 @@ async function determineMode() {
     console.log("after sunset and sunrise calculation");
     if (currentDate < sunRise) {
       console.log("Activating upload mode.");
-      emitPipelineClose();
       await performUpload();
     } else if (currentDate >= sunRise && currentDate < sunSet) {
       console.log("Activating acquisition mode.");
       init.date = currentDate;
       init.createPaths();
       init.createFolderStructure();
-      emitPiplineContinue(); // Fix the spelling here if necessary
       await startDCC();
     } else if (currentDate >= sunSet) {
       console.log("Activating upload mode.");
-      emitPipelineClose();
       await performUpload();
     }
   } catch (error) {
