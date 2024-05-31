@@ -11,7 +11,7 @@ const fse = require('fs-extra');
 const { createSocketServer, getRois } = require('../../src/socket-server/unixDomainSocketServer');
 const Document = require('../../src/data-preparation/Document');
 const { connect } = require('../socketio-client/socketioClient');
-
+const init = require('../../src/utils/Init');
 
 //initializations 
 let pipelineShouldContinue = true;
@@ -20,17 +20,6 @@ let croppedPicNames;
 const jsonFilePath = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/blueprint.json'
 const pyCropPics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/crop_pics.py'
 const pySavePics = '/data/data/com.termux/files/home/project-root-directory/cpps-server/src/process/save_pic.py'
-let date;
-let date_DMY;
-let rootDateDir;
-let srcPicturePath;
-let destCroppedPicturesPath;
-let occupiedPath;
-let unoccupiedPath;
-
-createPaths();
-createFolderStructure();
-
 
 //functions declerations
 function reviver(key, value) {
@@ -112,25 +101,6 @@ createSocketServer(socketPath);
 const blueprint = new Blueprint(jsonFilePath);
 const lstOfDictLotNameBbox = blueprint.categoryNameToBbox;
 
-function createPaths() {
-  date = new Date();
-  date_DMY = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
-  rootDateDir = `/data/data/com.termux/files/home/photos/data-collection/${date_DMY}`;
-  srcPicturePath = `${rootDateDir}/original`;
-  destCroppedPicturesPath = `${rootDateDir}/cropped`;
-  occupiedPath = `${destCroppedPicturesPath}/occupied`;
-  unoccupiedPath = `${destCroppedPicturesPath}/unccupied`;
-
-
-}
-
-function createFolderStructure() {
-  fse.ensureDirSync(rootDateDir);
-  fse.ensureDirSync(srcPicturePath);
-  fse.ensureDirSync(destCroppedPicturesPath);
-  fse.ensureDirSync(occupiedPath);
-  fse.ensureDirSync(unoccupiedPath);
-}
 // Event listener for pipeline close
 oncPipelineClose(() => {
   pipelineShouldContinue = false;
@@ -140,10 +110,6 @@ oncPipelineClose(() => {
 oncPipelineContinue(() => {
   pipelineShouldContinue = true;
   logger.info("Pipeline is restarting");
-
-  //update the date and path
-  createPaths();
-  createFolderStructure();
 });
 
 const startDCC = async () => {
@@ -152,7 +118,7 @@ const startDCC = async () => {
 
     //capture
     const pictureName = await capturePhoto();
-    exec(`mv /data/data/com.termux/files/home/photos/${pictureName}.jpg ${srcPicturePath}`, (error, stdout, stderr) => {
+    exec(`mv ${init.rootPhotosDir}/${pictureName}.jpg ${init.srcPicturePath}`, (error, stdout, stderr) => {
       if (error) {
           console.error(`Execution error: ${error}`);
           return;
@@ -161,7 +127,7 @@ const startDCC = async () => {
           console.error(`Error output: ${stderr}`);
       }
       console.log(`Output: ${stdout}`);
-      logger.verbose(`photo name ${pictureName} has been moved to ${srcPicturePath}`);
+      logger.verbose(`photo name ${pictureName} has been moved to ${init.srcPicturePath}`);
     });
     const isCaptured = pictureName != undefined ? true : false
     if (isCaptured) {
@@ -184,7 +150,7 @@ const startDCC = async () => {
 
 
     //crop
-    await executeChildProcess('python', [pyCropPics, srcPicturePath, pictureName, JSON.stringify(lstOfDictLotNameBbox), socketPath], {
+    await executeChildProcess('python', [pyCropPics, init.srcPicturePath, pictureName, JSON.stringify(lstOfDictLotNameBbox), socketPath], {
       stdio: ['pipe', 'pipe', 'pipe', 'ipc']
     });
     logger.verbose(`photo name ${pictureName} has been cropped`);
@@ -197,7 +163,7 @@ const startDCC = async () => {
 
 
     //save
-    await executeChildProcess('python', [pySavePics, destCroppedPicturesPath, JSON.stringify(croppedPicNames), socketPath], {
+    await executeChildProcess('python', [pySavePics, init.destCroppedPicturesPath, JSON.stringify(croppedPicNames), socketPath], {
       stdio: ['pipe', 'pipe', 'pipe', 'ipc']
     });
 
@@ -214,10 +180,10 @@ const startDCC = async () => {
     //store in folders after the 
     doc.slots.forEach((slot, index) => {
       if (classifications[index] == "occupied") {
-        spawn('mv', [`${destCroppedPicturesPath}/${slot.croppedFilename}`, `${occupiedPath}`]);
+        spawn('mv', [`${init.destCroppedPicturesPath}/${slot.croppedFilename}`, `${init.occupiedPath}`]);
       }
       else {
-        spawn('mv', [`${destCroppedPicturesPath}/${slot.croppedFilename}`, `${unoccupiedPath}`]);
+        spawn('mv', [`${init.destCroppedPicturesPath}/${slot.croppedFilename}`, `${init.unoccupiedPath}`]);
       }
     })
 

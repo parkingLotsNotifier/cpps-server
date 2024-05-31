@@ -1,9 +1,10 @@
 const fse = require("fs-extra");
-const { ROOT_FOLDER_PATH, ...rest } = require("./config/env");
+const { ROOT_FOLDER_PATH, ...rest } = require('../../config/env');
 
 class Init {
   #_date;
   #_date_DMY;
+  #_rootPhotosDir;
   #_rootDateDir;
   #_srcPicturePath;
   #_destCroppedPicturesPath;
@@ -29,6 +30,10 @@ class Init {
     return this.#_date_DMY;
   }
 
+  get rootPhotosDir() {
+    return this.#_rootPhotosDir;
+  }
+
   get rootDateDir() {
     return this.#_rootDateDir;
   }
@@ -52,13 +57,13 @@ class Init {
   // Setters
   set date(date) {
     this.#_date = date;
-    this.createPaths();
   }
 
   // Method to update and initialize paths
   createPaths() {
     this.#_date_DMY = `${this.#_date.getDate()}-${this.#_date.getMonth() + 1}-${this.#_date.getFullYear()}`;
-    this.#_rootDateDir = `${ROOT_FOLDER_PATH}/data-collection/${this.#_date_DMY}`;
+    this.#_rootPhotosDir = `${ROOT_FOLDER_PATH}/photos`;
+    this.#_rootDateDir = `${this.#_rootPhotosDir}/data-collection/${this.#_date_DMY}`;
     this.#_srcPicturePath = `${this.#_rootDateDir}/original`;
     this.#_destCroppedPicturesPath = `${this.#_rootDateDir}/cropped`;
     this.#_occupiedPath = `${this.#_destCroppedPicturesPath}/occupied`;
@@ -68,6 +73,7 @@ class Init {
   // Method to create folders if they do not exist
   createFolderStructure() {
     const paths = [
+      this.#_rootPhotosDir,
       this.#_rootDateDir,
       this.#_srcPicturePath,
       this.#_destCroppedPicturesPath,

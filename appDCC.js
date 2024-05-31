@@ -146,6 +146,7 @@ async function determineMode() {
       await performUpload();
     } else if (currentDate >= sunRise && currentDate < sunSet) {
       console.log("Activating acquisition mode.");
+      init.date = currentDate;
       init.createPaths();
       init.createFolderStructure();
       emitPiplineContinue(); // Fix the spelling here if necessary
