@@ -6,6 +6,7 @@ import base64
 import ast
 import socket
 import numpy as np
+import traceback
 
 sys.path.append(
     "/data/data/com.termux/files/home/project-root-directory/cpps-server/src/"
@@ -72,8 +73,12 @@ try:
 
 except Exception as e:
     error_message = f"An error occurred: {e}"
-    logger.error(error_message)
-    message = {"error": str(e)}
-    print(json.dumps(message))
-    sys.stdout.flush()
+    logger.error(error_message, exc_info=True)
+    logger.error(f"Error traceback {traceback.format_exc()}")
     sys.exit(1)
+    # error_message = f"An error occurred: {e}"
+    # logger.error(error_message)
+    # message = {"error": str(e)}
+    # print(json.dumps(message))
+    # sys.stdout.flush()
+    # sys.exit(1)

@@ -4,9 +4,12 @@ const cors = require("cors");
 const { PORT, ...rest } = require("./config/env");
 const { onChangeMode, onPipelineFinished, onPipelineError } = require("./src/events/index");
 const init = require("./src/utils/Init");
+const { exec } = require("child_process");
 const { startDCC } = require("../cpps-server/dcc-src/orchestra-conductor/startDCC");
 const { getSunrise, getSunset } = require("sunrise-sunset-js");
+const fse = require('fs-extra');
 const app = express();
+
 
 
 const jerusalemCoordinate = { lat: 31.771959, lng: 35.217018 };
@@ -41,12 +44,12 @@ function checksIfAcquisitionTime() {
   // const sunrise = new Date();
   // sunrise.setHours(6, 30, 0); // Assuming sunrise is at 6:30 AM
 
-  // // Set currentDate to one minute before sunrise
+  // // // Set currentDate to one minute before sunrise
   // const now = new Date(sunrise.getTime() - 60000); // Subtract 60,000 milliseconds (1 minute)
 
-  // // Define a sunset time for completeness
+  // // // Define a sunset time for completeness
   // const sunset = new Date();
-  // sunset.setHours(19, 30, 0); // Assuming sunset is at 7:30 PM
+  // sunset.setHours(21, 30, 0); // Assuming sunset is at 7:30 PM
 
   // Checking if current time is between sunrise and sunset
   if (now >= sunrise && now <= sunset) {
@@ -61,9 +64,13 @@ function checksIfAcquisitionTime() {
 // onPipelineError(startDCC);
 // Restart data collection after pipeline finishes or encounters an error
 onPipelineFinished(async () => {
+  console.log("on pipline finished");
     if (checksIfAcquisitionTime()) { await startDCC(); } else { await determineMode(); }
 });
-onPipelineError(async () => {
+onPipelineError(async (pictureName) => {
+    exec(`rm ${init.srcPicturePath}/${pictureName}*`);
+    exec(`rm ${init.destCroppedPicturesPath}/${pictureName}*`);
+    console.log("on pipline error");
     if (checksIfAcquisitionTime()) { await startDCC(); }
     else { await determineMode(); }
 });
@@ -129,12 +136,12 @@ async function determineMode() {
     // const sunRise = new Date();
     // sunRise.setHours(6, 30, 0); // Assuming sunrise is at 6:30 AM
 
-    // // Set currentDate to five minutes after sunrise
+    // // // Set currentDate to five minutes after sunrise
     // const currentDate = new Date(sunRise.getTime() + 300000); // Add 300,000 milliseconds (5 minutes)
 
-    // // Define a sunset time for completeness
+    // // // Define a sunset time for completeness
     // const sunSet = new Date();
-    // sunSet.setHours(19, 30, 0); // Assuming sunset is at 7:30 PM
+    // sunSet.setHours(21, 30, 0); // Assuming sunset is at 7:30 PM
 
     // Log for debugging
     console.log(`Sunrise: ${sunRise},\n Sunset: ${sunSet},\n Current time: ${currentDate}`);

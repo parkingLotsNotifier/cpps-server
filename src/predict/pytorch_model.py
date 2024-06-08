@@ -5,6 +5,7 @@ from PIL import Image
 import torch
 from torchvision import transforms
 import torch.nn.functional as F
+import traceback
 
 sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/') #TODO what its purpose?
 from logger.logger import setup_logger
@@ -69,15 +70,17 @@ def predict_occupancy(image_path):
 
     except Exception as e:
         error_message = f"Error predicting occupancy for {image_path}: {str(e)}"
-        logger.error(error_message)
+        logger.error(error_message, exc_info=True)
+        logger.error(f"Error traceback {traceback.format_exc()}")
         exit(1)
-    
+          
 
 if __name__ == "__main__":
     try:
         if len(sys.argv) != 3:
             error_message = "Usage: python pytorch_model.py <dest_path> <crop_message>"
-            logger.error(error_message)
+            ogger.error(error_message, exc_info=True)
+            logger.error(f"Error traceback {traceback.format_exc()}")
             sys.exit(1)
 
         src_path,input_message = sys.argv[1:3]
@@ -102,7 +105,8 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         error_message = f"Error in main: {str(e)}"
-        logger.error(error_message)
+        logger.error(error_message, exc_info=True)
+        logger.error(f"Error traceback {traceback.format_exc()}")
         message = {
             'error': str(e)
         }

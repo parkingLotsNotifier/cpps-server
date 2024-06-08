@@ -4,6 +4,8 @@ import cv2
 import json
 import base64
 import socket
+import traceback
+
 
 sys.path.append('/data/data/com.termux/files/home/project-root-directory/cpps-server/src/')
 from logger.logger import setup_logger
@@ -11,7 +13,6 @@ logger = setup_logger("crop_pics")
 try:
         
     src_path,img_name,basic_data,socket_path = sys.argv[1:5]
-    logger.info(socket_path)
     basic_data=json.loads(basic_data)
 
     rois=[]
@@ -54,6 +55,7 @@ try:
 
 except Exception as e:
         error_message = f"An error occurred: {e}"
-        logger.error(error_message)
+        logger.error(error_message, exc_info=True)
+        logger.error(f"Error traceback {traceback.format_exc()}")
         sys.exit(1)
        
