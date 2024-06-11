@@ -79,6 +79,9 @@ const executeChildProcess = (cmd, args, options, timeout) => {
   });
 };
 
+// TODO: to be removed in further future
+const spawnWithTimeout = (command, args, timeout, operationName) => { return runWithTimeout(new Promise((resolve, reject) => { const child = spawn(command, args); const timer = setTimeout(() => { child.kill(); reject(new Error(`Spawn process timed out: ${operationName}`)); }, timeout); child.on('close', (code) => { clearTimeout(timer); if (code === 0) { resolve(); } else { reject(new Error(`Spawn process ${operationName} failed with code ${code}`)); } }); child.stderr.on('data', (data) => { logger.error(`Error from spawn process ${command} ${operationName} : ${data.toString()}`); }); }), timeout, operationName); };
+
 const runWithTimeout = (promise, timeout, operationName) => {
   return Promise.race([
     promise,
@@ -118,7 +121,7 @@ const startDCC = async () => {
         if (stderr) {
           console.error(`Error output: ${stderr}`);
         }
-        console.log(`Output: ${stdout}`);
+        //console.log(`Output: ${stdout}`);
         logger.verbose(`photo name ${pictureName} has been moved to ${init.srcPicturePath}`);
         resolve();
       });
@@ -146,15 +149,10 @@ const startDCC = async () => {
     let placeholderRois = new Array(lstOfDictLotNameBbox.length).fill(0);
 
     let doc = new Document(pictureName, croppedPicNames, placeholderRois, placeholderAvgs, lstOfDictLotNameBbox, "Student residences");
-
-    // Store in folders after classification
-    doc.slots.forEach((slot, index) => {
-      if (classifications[index] == "occupied") {
-        spawn('mv', [`${init.destCroppedPicturesPath}/${slot.croppedFilename}`, `${init.occupiedPath}`]);
-      } else {
-        spawn('mv', [`${init.destCroppedPicturesPath}/${slot.croppedFilename}`, `${init.unoccupiedPath}`]);
-      }
-    });
+    
+  // Store in folders after classification  
+  // TODO: We need to attempt implementing this by "executeChildProcess" function.
+  await Promise.all(doc.slots.map((slot, index) => { if (classifications[index] == "occupied") { return spawnWithTimeout('mv', [`${init.destCroppedPicturesPath}/${slot.croppedFilename}`, `${init.occupiedPath}`], timeOut, `moveOccupied_${slot.croppedFilename}`); } else { return spawnWithTimeout('mv', [`${init.destCroppedPicturesPath}/${slot.croppedFilename}`, `${init.unoccupiedPath}`], timeOut, `moveUnoccupied_${slot.croppedFilename}`); } })); 
 
     logger.verbose(`cropped photos moved to their folders`);
 
@@ -163,7 +161,7 @@ const startDCC = async () => {
     emitPipelineFinished();
 
   } catch (error) {
-    logger.error(`Error in startDCC: ${error.message}`);
+    logger.error(`Error (ShaiShillo App) in startDCC: ${error.message}`);
     emitPipelineError(`${pictureName}`);
   }
 };
